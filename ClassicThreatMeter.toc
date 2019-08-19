@@ -1,0 +1,16 @@
+## Interface: 11302
+## Title: ClassicThreatMeter
+## Version: 0.2
+## Author: Es (EsreverWoW)
+## Notes: Simple threat meter for WoW Classic.
+## SavedVariables: CTM_Options
+
+## OptionalDeps: LibStub, CallbackHandler-1.0, ChatThrottleLib, Ace3, Threat-2.0
+## X-Embeds: LibStub, CallbackHandler-1.0, ChatThrottleLib, Ace3, Threat-2.0
+
+## X-Category: Combat
+
+## X-License: MIT
+## X-Website: #
+
+ClassicThreatMeter.xml

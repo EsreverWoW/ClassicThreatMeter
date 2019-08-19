@@ -1,0 +1,33 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+	<!-- Init -->
+	<Script file="core\init.lua"/>
+
+	<!-- Libraries -->
+	<Script file="lib\LibStub\LibStub.lua"/>
+	<Script file="lib\CallbackHandler-1.0\CallbackHandler-1.0.lua"/>
+	<Include file="lib\AceAddon-3.0\AceAddon-3.0.xml"/>
+	<Include file="lib\AceBucket-3.0\AceBucket-3.0.xml"/>
+	<Include file="lib\AceComm-3.0\AceComm-3.0.xml"/>
+	<Include file="lib\AceConsole-3.0\AceConsole-3.0.xml"/>
+	<Include file="lib\AceEvent-3.0\AceEvent-3.0.xml"/>
+	<Include file="lib\AceTimer-3.0\AceTimer-3.0.xml"/>
+	<Include file="lib\AceSerializer-3.0\AceSerializer-3.0.xml"/>
+	<Include file="lib\ThreatClassic-1.0\lib.xml"/>
+
+	<!-- Locales -->
+	<Script file="locale\enUS.lua"/>
+	<Script file="locale\deDE.lua"/>
+	<Script file="locale\esES.lua"/>
+	<Script file="locale\frFR.lua"/>
+	<Script file="locale\itIT.lua"/>
+	<Script file="locale\koKR.lua"/>
+	<Script file="locale\ptBR.lua"/>
+	<Script file="locale\ruRU.lua"/>
+	<Script file="locale\zhCN.lua"/>
+	<Script file="locale\zhTW.lua"/>
+
+	<!-- Core -->
+	<Script file="core\config.lua"/>
+	<Script file="core\options.lua"/>
+	<Script file="core\core.lua"/>
+</Ui>
