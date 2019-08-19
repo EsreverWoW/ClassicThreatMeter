@@ -5,12 +5,12 @@
 ## Notes: Simple threat meter for WoW Classic.
 ## SavedVariables: CTM_Options
 
-## OptionalDeps: LibStub, CallbackHandler-1.0, ChatThrottleLib, Ace3, Threat-2.0
-## X-Embeds: LibStub, CallbackHandler-1.0, ChatThrottleLib, Ace3, Threat-2.0
+## OptionalDeps: LibStub, CallbackHandler-1.0, ChatThrottleLib, Ace3, ThreatClassic-1.0
+## X-Embeds: LibStub, CallbackHandler-1.0, ChatThrottleLib, Ace3, ThreatClassic-1.0
 
 ## X-Category: Combat
 
 ## X-License: MIT
-## X-Website: #
+## X-Website: https://github.com/EsreverWoW/ClassicThreatMeter
 
 ClassicThreatMeter.xml
