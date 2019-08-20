@@ -395,7 +395,7 @@ end
 function prototype:Boot()
 	self:OnInitialize()
 	ThreatLib:Debug("Enable %s", self:GetName())
-	if GetNumTalents(1) == 0 then return end 	-- talents aren't available
+	if GetNumTalents(1) == 0 then return end -- talents aren't available
 	ThreatLib:Debug("Talents are available, continuing...")
 
 	self.buffThreatMultipliers = 1

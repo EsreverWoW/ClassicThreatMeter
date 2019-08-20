@@ -1060,6 +1060,57 @@ function ThreatLib:IsActive()
 end
 
 ------------------------------------------------------------------------
+-- :GetThreatStatusColor("unit", "mob")
+-- Arguments: 
+--  integer - the threat status value to get colors for.
+-- Returns:
+--  float - a value between 0 and 1 for the red content of the color
+--  float - a value between 0 and 1 for the green content of the color
+--  float - a value between 0 and 1 for the blue content of the color
+------------------------------------------------------------------------
+local threatColors = {
+	[0] = {0.69, 0.69, 0.69},
+	[1] = {1, 1, 0.47},
+	[2] = {1, 0.6, 0},
+	[3] = {1, 0, 0}
+}
+
+function ThreatLib:GetThreatStatusColor(statusIndex)
+	if not (type(statusIndex) == "number" and statusIndex >= 0 and statusIndex < 4) then
+		statusIndex = 0
+	end
+
+	return threatColors[statusIndex][1], threatColors[statusIndex][2], threatColors[statusIndex][3]
+end
+
+------------------------------------------------------------------------
+-- :UnitThreatSituation("unit", "mob")
+-- Arguments: 
+--  string - unitID of the unit to get threat information for.
+--  string - unitID of the target unit to reference.
+-- Returns:
+--  integer - returns the threat status for the unit on the mob, or nil if unit is not on mob's threat table. (3 = securely tanking, 2 = insecurely tanking, 1 = not tanking but higher threat than tank, 0 = not tanking and lower threat than tank)
+------------------------------------------------------------------------
+function ThreatLib:UnitThreatSituation(unit, target)
+	local unitGUID, targetGUID = UnitGUID(unit), UnitGUID(target)
+	local maxVal, maxGUID = self:GetMaxThreatOnTarget(targetGUID)
+	local secondGUID, secondThreat = self:GetPlayerAtPosition(targetGUID, 2)
+	local threatValue = self:GetThreat(unitGUID, targetGUID) or 0
+
+	if UnitIsUnit(unit, target .. "target") then
+		if secondThreat and secondThreat > threatValue then
+			return 2
+		else
+			return 3
+		end
+	elseif threatValue > maxVal then
+		return 1
+	else
+		return 0
+	end
+end
+
+------------------------------------------------------------------------
 -- :UnitDetailedThreatSituation("unit", "mob")
 -- Arguments: 
 --  string - unitID of the unit to get threat information for.
@@ -1067,9 +1118,9 @@ end
 -- Returns:
 --  integer - returns 1 if the unit is primary threat target of the mob (is tanking), or nil otherwise.
 --  integer - returns the threat status for the unit on the mob, or nil if unit is not on mob's threat table. (3 = securely tanking, 2 = insecurely tanking, 1 = not tanking but higher threat than tank, 0 = not tanking and lower threat than tank)
---  integer - returns the unit's threat on the mob as a percentage of the amount required to pull aggro, scaled according to the unit's range from the mob. At 100 the unit will pull aggro. Returns 100 if the unit is tanking and nil if the unit is not on the mob's threat list.
---  integer - returns the unit's threat as a percentage of the tank's current threat. Returns nil if the unit is not on the mob's threat list.
---  integer - returns the unit's total threat on the mob.
+--  float - returns the unit's threat on the mob as a percentage of the amount required to pull aggro, scaled according to the unit's range from the mob. At 100 the unit will pull aggro. Returns 100 if the unit is tanking and nil if the unit is not on the mob's threat list.
+--  float - returns the unit's threat as a percentage of the tank's current threat. Returns nil if the unit is not on the mob's threat list.
+--  float - returns the unit's total threat on the mob.
 ------------------------------------------------------------------------
 function ThreatLib:UnitDetailedThreatSituation(unit, target)
 	local isTanking, threatStatus, threatPercent, rawThreatPercent, threatValue = nil, 0, nil, nil, 0
