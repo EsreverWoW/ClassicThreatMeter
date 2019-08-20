@@ -33,6 +33,10 @@ end
 -----------------------------
 local ThreatLib = A:IsClassic() and LibStub:GetLibrary("ThreatClassic-1.0")
 
+local UnitThreatSituation = A:IsClassic() and function(unit, mob)
+	return ThreatLib:UnitThreatSituation(unit, mob)
+end or _G.UnitThreatSituation
+
 local UnitDetailedThreatSituation = A:IsClassic() and function(unit, mob)
 	return ThreatLib:UnitDetailedThreatSituation(unit, mob)
 end or _G.UnitDetailedThreatSituation
@@ -241,22 +245,6 @@ local function CheckStatus(self, event)
 	end
 end
 
--- Test Bars
-local function TestBars()
-	if InCombatLockdown() then return end
-
-	testMode = true
-	for i = 1, C.bar.count do
-		threatData[i] = {
-			unit = UnitName("player"),
-			scaledPercent = i / C.bar.count * 100,
-			threatValue = i * 1e4,
-		}
-		tinsert(bars, i)
-	end
-	UpdateThreatBars(frame)
-end
-
 -----------------------------
 -- INIT
 -----------------------------
@@ -354,3 +342,90 @@ A:CreateDragFrame(frame, A.dragFrames, -2, true)
 
 -- Create Slash Commands
 A:CreateSlashCmd(A.addonName, A.addonShortcut, A.dragFrames, A.addonColor)
+
+-----------------------------
+-- TEST BARS
+-----------------------------
+local function TestBars()
+	if InCombatLockdown() then return end
+
+	testMode = true
+	for i = 1, C.bar.count do
+		threatData[i] = {
+			unit = UnitName("player"),
+			scaledPercent = i / C.bar.count * 100,
+			threatValue = i * 1e4,
+		}
+		tinsert(bars, i)
+	end
+	UpdateThreatBars(frame)
+end
+
+-- temporary
+SlashCmdList.CTMTEST = function()
+	TestBars()
+end
+SLASH_CTMTEST1 = "/ctmtest"
+
+-----------------------------
+-- NAMEPLATES
+-----------------------------
+local threatColors = {
+	[0] = {0.2, 0.8, 0.2},	-- #33CC33
+	[1] = {1, 1, 0},		-- #FFFF00
+	[2] = {1, 1, 0},		-- #FFFF00
+	[3] = {1, 0, 0}			-- #FF0000
+}
+
+local function UpdateNameplateThreat(self) -- TODO: write on/off tooggle and logic to reverse the order when tanking
+	if not InCombatLockdown() then return end
+	local unit = self.unit
+	if not unit then return end
+	if not unit:match("nameplate%d?$") then return end
+	local nameplate = C_NamePlate.GetNamePlateForUnit(unit)
+	if not nameplate then return end
+	local status = UnitThreatSituation("player", unit)
+	if status then
+		local r, g, b = threatColors[status][1], threatColors[status][2], threatColors[status][3]
+		self.healthBar:SetStatusBarColor(r, g, b)
+	end
+end
+
+if A:IsClassic() then
+	-- since UNIT_THREAT_LIST_UPDATE isn't a thing in Classic, health color doesn't update nearly as frequently
+	-- we'll instead hook the range check since it is OnUpdate - gross, but it works
+	hooksecurefunc("CompactUnitFrame_UpdateInRange", UpdateNameplateThreat)
+else
+	hooksecurefunc("CompactUnitFrame_UpdateHealthColor", UpdateNameplateThreat)
+	hooksecurefunc("CompactUnitFrame_UpdateAggroFlash", UpdateNameplateThreat)
+end
+
+-----------------------------
+-- VERSION CHECK
+-----------------------------
+local check = function(self, event, prefix, message, _, sender)
+	if event == "CHAT_MSG_ADDON" then
+		if prefix ~= "CTMVer" or sender == T.name then return end
+		if tonumber(message) ~= nil and tonumber(message) > tonumber(A.version) then
+			print("|cffff0000"..L.outdated.."|r")
+			self:UnregisterEvent("CHAT_MSG_ADDON")
+		end
+	else
+		if IsInGroup(LE_PARTY_CATEGORY_INSTANCE) then
+			C_ChatInfo.SendAddonMessage("CTMVer", tonumber(A.version), "INSTANCE_CHAT")
+		elseif IsInRaid(LE_PARTY_CATEGORY_HOME) then
+			C_ChatInfo.SendAddonMessage("CTMVer", tonumber(A.version), "RAID")
+		elseif IsInGroup(LE_PARTY_CATEGORY_HOME) then
+			C_ChatInfo.SendAddonMessage("CTMVer", tonumber(A.version), "PARTY")
+		elseif IsInGuild() then
+			C_ChatInfo.SendAddonMessage("CTMVer", tonumber(A.version), "GUILD")
+		end
+	end
+end
+
+local VersionCheck = CreateFrame("Frame")
+VersionCheck:RegisterEvent("PLAYER_ENTERING_WORLD")
+VersionCheck:RegisterEvent("GROUP_ROSTER_UPDATE")
+VersionCheck:RegisterEvent("CHAT_MSG_ADDON")
+VersionCheck:SetScript("OnEvent", check)
+C_ChatInfo.RegisterAddonMessagePrefix("CTMVer")

@@ -6,6 +6,10 @@ local A, C, L, _ = unpack(select(2, ...))
 -- welcome message
 L.welcome			= "Type /ctm for options."
 
+-- version check
+L.outdated			= "New version of CTM available! Please download the latest version."
+L.incompatible		= "CTM is out of date and is incompatible with someone in your group. Please upgrade immediately."
+
 -- main frame
 L.gui.threat		= "Threat"
 
