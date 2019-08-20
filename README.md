@@ -6,6 +6,8 @@ A simple threat meter for WoW Classic (1.13.2)
  - This has yet to be tested in Classic. Please forgive any bugs that may arise on launch day and allow me some time to fix them.
  - Configuration is limited to what is available in the `/ctm` slash command until I implement a more robust GUI config.
 
+<img src="https://i.imgur.com/r8hiXzL.png">
+
 **Sources:**
  - https://github.com/magey/classic-warrior/wiki/Threat-Mechanics
 
