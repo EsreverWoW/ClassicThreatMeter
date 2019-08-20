@@ -21,17 +21,21 @@ local oldTime = 0
 local playerGUID = UnitGUID("player")
 
 -----------------------------
+-- Check if Classic
+-----------------------------
+function A:IsClassic()
+	-- return _G.WOW_PROJECT_ID ~= _G.WOW_PROJECT_CLASSIC -- for testing in retail
+	return _G.WOW_PROJECT_ID == _G.WOW_PROJECT_CLASSIC
+end
+
+-----------------------------
 -- ThreatClassic-1.0
 -----------------------------
-local ThreatLib = LibStub:GetLibrary("ThreatClassic-1.0")
---[[
-local UnitDetailedThreatSituation = UnitDetailedThreatSituation or function(unit, mob)
+local ThreatLib = A:IsClassic() and LibStub:GetLibrary("ThreatClassic-1.0")
+
+local UnitDetailedThreatSituation = A:IsClassic() and function(unit, mob)
 	return ThreatLib:UnitDetailedThreatSituation(unit, mob)
-end
---]]
-local UnitDetailedThreatSituation = function(unit, mob)
-	return ThreatLib:UnitDetailedThreatSituation(unit, mob)
-end
+end or _G.UnitDetailedThreatSituation
 
 -----------------------------
 -- FUNCTIONS
@@ -161,7 +165,7 @@ local function UpdateThreatBars(self)
 		-- get values out of table
 		local data = threatData[i]
 		local bar = self.bars[i]
-		if data then
+		if data and data.threatValue > 0 then
 			bar.name:SetText(UnitName(data.unit) or UNKNOWN)
 			bar.val:SetText(NumFormat(data.threatValue))
 			bar.perc:SetText(floor(data.scaledPercent).."%")
@@ -184,22 +188,17 @@ end
 
 -- Check Status
 local function CheckStatus(self, event)
-	if event == "PLAYER_REGEN_ENABLED" and not InCombatLockdown() then
-		collectgarbage()
-	end
-
-	if (event == "COMBAT_LOG_EVENT_UNFILTERED" or event == "CLASSIC_THREAT_UPDATE") and testMode then
-		return
-	else
-		testMode = false
-	end
+	if event == "CLASSIC_THREAT_UPDATE" and testMode then return else testMode = false end
 
 	local instanceType = select(2, GetInstanceInfo())
 	if (C.general.hideOOC and not InCombatLockdown()) or (C.hideSolo and GetNumGroupMembers() == 0) or (C.general.hideInPVP and (instanceType == "arena" or instanceType == "pvp")) then
 		self:Hide()
 		return
 	end
-	if UnitExists("target") and not UnitIsDeadOrGhost("target") then -- and InCombatLockdown() then
+
+	local target = UnitIsFriend("player", "target") and "targettarget" or "target"
+
+	if UnitExists(target) and UnitAffectingCombat(target) then
 		self:Show()
 		local now = GetTime()
 		if now - oldTime > C.general.update then
@@ -228,9 +227,8 @@ local function CheckStatus(self, event)
 			oldTime = now
 		end
 		-- set header unit name
-		local target = UnitIsFriend("player", "target") and "targettarget" or "target"
-		local targetName = UnitName(target) or ""
-		self.headerText:SetText(format("%s%s", L.gui.threat, ": "..targetName))
+		local targetName = UnitExists(target) and (": " .. UnitName(target)) or ""
+		self.headerText:SetText(format("%s%s", L.gui.threat, targetName))
 		
 	else
 		-- clear header text of unit name
@@ -338,12 +336,12 @@ end
 
 -- Events
 frame:SetScript("OnEvent", CheckStatus)
-if ThreatLib then
+if A:IsClassic() then
 	ThreatLib:RegisterCallback("Activate", CheckStatusFromCallback)
 	ThreatLib:RegisterCallback("ThreatUpdated", CheckStatusFromCallback)
 	ThreatLib:RequestActiveOnSolo(true)
 else
-	frame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+	frame:RegisterEvent("UNIT_THREAT_LIST_UPDATE")
 end
 frame:RegisterEvent("PLAYER_TARGET_CHANGED")
 frame:RegisterEvent("PLAYER_ENTERING_WORLD")
