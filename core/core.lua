@@ -4,51 +4,82 @@ local A, C, L, _ = unpack(select(2, ...))
 -- VARIABLES
 -----------------------------
 -- upvalues
-local wipe = wipe
-local select = select
-local tinsert = tinsert
-local sort = sort
-local floor = floor
-local format = format
-local RAID_CLASS_COLORS = RAID_CLASS_COLORS
-local FACTION_BAR_COLORS = FACTION_BAR_COLORS
+local _G		= _G
+local unpack	= _G.unpack
+local select	= _G.select
+local tonumber	= _G.tonumber
+local floor		= _G.math.floor
+local format	= _G.string.format
+local tinsert	= _G.table.insert
+local sort		= _G.table.sort
+local wipe		= _G.table.wipe
+
+local GetNumGroupMembers	= _G.GetNumGroupMembers
+local GetTime				= _G.GetTime
+local GetInstanceInfo		= _G.GetInstanceInfo
+local InCombatLockdown		= _G.InCombatLockdown
+local UnitAffectingCombat	= _G.UnitAffectingCombat
+local UnitClass				= _G.UnitClass
+local UnitExists			= _G.UnitExists
+local UnitIsFriend			= _G.UnitIsFriend
+local UnitName				= _G.UnitName
+local UnitReaction			= _G.UnitReaction
+local UnitGUID				= _G.UnitGUID
+
+local FACTION_BAR_COLORS	= _G.FACTION_BAR_COLORS
+local RAID_CLASS_COLORS		= _G.RAID_CLASS_COLORS
 
 -- other
 local bars = {}
 local threatData = {}
-local testMode = false
+local threatColors = {}
 local oldTime = 0
-local playerGUID = UnitGUID("player")
+local playerName = ""
+local playerGUID = ""
 
 -----------------------------
--- Check if Classic
+-- WOW CLASSIC
 -----------------------------
-function A:IsClassic()
-	-- return _G.WOW_PROJECT_ID ~= _G.WOW_PROJECT_CLASSIC -- for testing in retail
-	return _G.WOW_PROJECT_ID == _G.WOW_PROJECT_CLASSIC
-end
+-- A.classic = _G.WOW_PROJECT_ID ~= _G.WOW_PROJECT_CLASSIC -- for testing in retail
+A.classic = _G.WOW_PROJECT_ID == _G.WOW_PROJECT_CLASSIC
 
------------------------------
--- ThreatClassic-1.0
------------------------------
-local ThreatLib = A:IsClassic() and LibStub:GetLibrary("ThreatClassic-1.0")
+local ThreatLib = A.classic and LibStub:GetLibrary("ThreatClassic-1.0")
 
-local UnitThreatSituation = A:IsClassic() and function(unit, mob)
+local UnitThreatSituation = A.classic and function(unit, mob)
 	return ThreatLib:UnitThreatSituation(unit, mob)
 end or _G.UnitThreatSituation
 
-local UnitDetailedThreatSituation = A:IsClassic() and function(unit, mob)
+local UnitDetailedThreatSituation = A.classic and function(unit, mob)
 	return ThreatLib:UnitDetailedThreatSituation(unit, mob)
 end or _G.UnitDetailedThreatSituation
 
 -----------------------------
+-- INIT
+-----------------------------
+local CTM = CreateFrame("Frame", A.addonName.."BarFrame", UIParent)
+
+-----------------------------
 -- FUNCTIONS
 -----------------------------
--- Create Backdrop
+local function CopyDefaults(t1, t2)
+	if type(t1) ~= "table" then return {} end
+	if type(t2) ~= "table" then t2 = {} end
+
+	for k, v in pairs(t1) do
+		if type(v) == "table" then
+			t2[k] = CopyDefaults(v, t2[k])
+		elseif type(v) ~= type(t2[k]) then
+			t2[k] = v
+		end
+	end
+
+	return t2
+end
+
 local function CreateBackdrop(parent, cfg)
-	local frame = CreateFrame("Frame", nil, parent)
-	frame:SetPoint("TOPLEFT", parent, "TOPLEFT", -cfg.inset, cfg.inset)
-	frame:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", cfg.inset, -cfg.inset)
+	local f = CreateFrame("Frame", nil, parent)
+	f:SetPoint("TOPLEFT", parent, "TOPLEFT", -cfg.inset, cfg.inset)
+	f:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", cfg.inset, -cfg.inset)
 	-- Backdrop Settings
 	local backdrop = {
 		bgFile = cfg.bgFile,
@@ -63,79 +94,51 @@ local function CreateBackdrop(parent, cfg)
 			bottom = cfg.inset,
 		},
 	}
-	frame:SetBackdrop(backdrop)
-	frame:SetBackdropColor(cfg.bgColor.r, cfg.bgColor.g, cfg.bgColor.b, cfg.bgColor.a)
-	frame:SetBackdropBorderColor(cfg.edgeColor.r, cfg.edgeColor.g, cfg.edgeColor.b, cfg.edgeColor.a)
+	f:SetBackdrop(backdrop)
+	f:SetBackdropColor(unpack(cfg.bgColor))
+	f:SetBackdropBorderColor(unpack(cfg.edgeColor))
 
-	parent.backdrop = frame
+	parent.backdrop = f
 end
 
 local function CreateFS(parent)
 	local fs = parent:CreateFontString(nil, "ARTWORK")
 	fs:SetFont(C.font.family, C.font.size, C.font.style)
-	fs:SetVertexColor(C.font.color.r, C.font.color.g, C.font.color.b, C.font.color.a)
-	fs:SetShadowOffset(C.font.shadow and 1 or 0, C.font.shadow and -1 or 0)
 	return fs
 end
 
 local function CreateStatusBar(parent, header)
 	-- StatusBar
 	local bar = CreateFrame("StatusBar", nil, parent)
-	bar:SetSize(C.bar.width + 2, C.bar.height)
+	bar:SetSize(C.frame.width + 2, C.bar.height)
 	bar:SetStatusBarTexture(C.bar.texture)
 	bar:SetMinMaxValues(0, 100)
+	-- Backdrop
 	CreateBackdrop(bar, C.backdrop)
 
 	if not header then
 		-- BG
 		bar.bg = bar:CreateTexture(nil, "BACKGROUND", nil, -6)
-		bar.bg:SetTexture(C.bar.texture)
 		bar.bg:SetAllPoints(bar)
 		-- Name
 		bar.name = CreateFS(bar)
-		bar.name:SetPoint("LEFT", bar, 2, 0)
 		bar.name:SetJustifyH("LEFT")
 		-- Perc
 		bar.perc = CreateFS(bar)
-		bar.perc:SetPoint("RIGHT", bar, -2, 0)
 		bar.perc:SetJustifyH("RIGHT")
 		-- Value
 		bar.val = CreateFS(bar)
-		bar.val:SetPoint("RIGHT", bar, -40, 0)
 		bar.val:SetJustifyH("RIGHT")
-		bar.name:SetPoint("RIGHT", bar.val, "LEFT", -10, 0) -- right point of name is left point of value
 
 		bar:Hide()
 	end
 	return bar
 end
 
--- Update Threat Data
-local function UpdateThreatData(unit)
-	if not UnitExists(unit) then return end
-	-- check target of target if currently targeting a friend
-	local target = UnitIsFriend("player", "target") and "targettarget" or "target"
-	local _, _, scaledPercent, _, threatValue = UnitDetailedThreatSituation(unit, target)
-	if threatValue and threatValue < 0 then
-		threatValue = threatValue + 410065408
-	end
-	tinsert(threatData, {
-		unit			= unit,
-		scaledPercent	= scaledPercent or 0,
-		threatValue		= threatValue or 0,
-	})
+local function Compare(a, b)
+	return a.scaledPercent > b.scaledPercent
 end
 
--- Get Color
-local function GetColor(unit)
-	if UnitIsPlayer(unit) then
-		return RAID_CLASS_COLORS[select(2, UnitClass(unit))]
-	else
-		return FACTION_BAR_COLORS[UnitReaction(unit, "player")]
-	end
-end
-
--- Number Format
 local function NumFormat(v)
 	if v > 1e10 then
 		return (floor(v / 1e9)).."b"
@@ -154,13 +157,17 @@ local function NumFormat(v)
 	end
 end
 
--- Compare Values
-local function Compare(a, b)
-	return a.scaledPercent > b.scaledPercent
+local function GetColor(unit)
+	if UnitIsPlayer(unit) then
+		local color = RAID_CLASS_COLORS[select(2, UnitClass(unit))]
+		return {color.r, color.g, color.b, C.bar.alpha}
+	else
+		local color = FACTION_BAR_COLORS[UnitReaction(unit, "player")]
+		return {color.r, color.g, color.b, C.bar.alpha}
+	end
 end
 
--- Update Threat Bars
-local function UpdateThreatBars(self)
+local function UpdateThreatBars()
 	-- sort the threat table
 	sort(threatData, Compare)
 
@@ -168,20 +175,20 @@ local function UpdateThreatBars(self)
 	for i = 1, C.bar.count do
 		-- get values out of table
 		local data = threatData[i]
-		local bar = self.bars[i]
+		local bar = CTM.bars[i]
 		if data and data.threatValue > 0 then
 			bar.name:SetText(UnitName(data.unit) or UNKNOWN)
 			bar.val:SetText(NumFormat(data.threatValue))
 			bar.perc:SetText(floor(data.scaledPercent).."%")
 			bar:SetValue(data.scaledPercent)
-			local color = GetColor(data.unit) or {r = 0.8, g = 0, b = 0.8}
+			local color = GetColor(data.unit) or {0.8, 0, 0.8, C.bar.alpha}
 			if C.bar.marker and UnitGUID(data.unit) == playerGUID then
-				color = {r = 0.8, g = 0, b = 0}
+				color = {0.8, 0, 0, C.bar.alpha}
 			end
-			bar:SetStatusBarColor(color.r, color.g, color.b, C.bar.alpha)
-			bar.bg:SetVertexColor(color.r * C.bar.colorMod, color.g * C.bar.colorMod, color.b * C.bar.colorMod, C.bar.alpha)
-			bar.backdrop:SetBackdropColor(C.backdrop.bgColor.r, C.backdrop.bgColor.g, C.backdrop.bgColor.b, C.backdrop.bgColor.a)
-			bar.backdrop:SetBackdropBorderColor(C.backdrop.edgeColor.r, C.backdrop.edgeColor.g, C.backdrop.edgeColor.b, C.backdrop.edgeColor.a)
+			bar:SetStatusBarColor(unpack(color))
+			bar.bg:SetVertexColor(color[1] * C.bar.colorMod, color[2] * C.bar.colorMod, color[3] * C.bar.colorMod, C.bar.alpha)
+			bar.backdrop:SetBackdropColor(unpack(C.backdrop.bgColor))
+			bar.backdrop:SetBackdropBorderColor(unpack(C.backdrop.edgeColor))
 
 			bar:Show()
 		else
@@ -190,20 +197,51 @@ local function UpdateThreatBars(self)
 	end
 end
 
--- Check Status
-local function CheckStatus(self, event)
-	if event == "CLASSIC_THREAT_UPDATE" and testMode then return else testMode = false end
-
+local function CheckVisibility()
 	local instanceType = select(2, GetInstanceInfo())
-	if (C.general.hideOOC and not InCombatLockdown()) or (C.hideSolo and GetNumGroupMembers() == 0) or (C.general.hideInPVP and (instanceType == "arena" or instanceType == "pvp")) then
-		self:Hide()
-		return
+	local show = (C.general.hideOOC and not InCombatLockdown()) or (C.general.hideSolo and GetNumGroupMembers() == 0) or (C.general.hideInPVP and (instanceType == "arena" or instanceType == "pvp"))
+
+	if A.classic then
+		if show then
+			ThreatLib:RequestActiveOnSolo(true)
+		else
+			ThreatLib:RequestActiveOnSolo(false)
+		end
+	end
+
+	return show
+end
+
+local function UpdateThreatData(unit)
+	if not UnitExists(unit) then return end
+	-- check target of target if currently targeting a friend
+	local target = UnitIsFriend("player", "target") and "targettarget" or "target"
+	local _, _, scaledPercent, _, threatValue = UnitDetailedThreatSituation(unit, target)
+	if threatValue and threatValue < 0 then
+		threatValue = threatValue + 410065408
+	end
+	tinsert(threatData, {
+		unit			= unit,
+		scaledPercent	= scaledPercent or 0,
+		threatValue		= threatValue or 0,
+	})
+end
+
+local function CheckStatus()
+	if C.frame.test then return end
+
+	local hideFrame = CheckVisibility()
+
+	if hideFrame then
+		return CTM:Hide()
+	else
+		CTM:Show()
 	end
 
 	local target = UnitIsFriend("player", "target") and "targettarget" or "target"
 
 	if UnitExists(target) and UnitAffectingCombat(target) then
-		self:Show()
+		CTM:Show()
 		local now = GetTime()
 		if now - oldTime > C.general.update then
 			-- wipe
@@ -227,16 +265,15 @@ local function CheckStatus(self, event)
 				UpdateThreatData("player")
 				UpdateThreatData("pet")
 			end
-			UpdateThreatBars(self)
+			UpdateThreatBars()
 			oldTime = now
 		end
 		-- set header unit name
 		local targetName = UnitExists(target) and (": " .. UnitName(target)) or ""
-		self.headerText:SetText(format("%s%s", L.gui.threat, targetName))
-		
+		CTM.headerText:SetText(format("%s%s", L.gui_threat, targetName))
 	else
 		-- clear header text of unit name
-		self.headerText:SetText(format("%s%s", L.gui.threat, ""))
+		CTM.headerText:SetText(format("%s%s", L.gui_threat, ""))
 		-- hide bars when no target
 		for i = 1, C.bar.count do
 			bars[i]:Hide()
@@ -246,139 +283,125 @@ local function CheckStatus(self, event)
 end
 
 -----------------------------
--- INIT
+-- UPDATE FRAME
 -----------------------------
-local OnLogon = CreateFrame("Frame")
-OnLogon:RegisterEvent("PLAYER_ENTERING_WORLD")
-OnLogon:SetScript("OnEvent", function(self, event)
-	self:UnregisterEvent("PLAYER_ENTERING_WORLD")
-
-	-- handle SavedVariables
-	if CTM_Options == nil then
-		CTM_Options = {}
-	end
-
-	for i = 1, #C do
-		if CTM_Options[C[i]] == nil then
-			CTM_Options[C[i]] = C[C[i]]
-		end
-	end
-
-	-- Minimum of 1 Row
-	if not C.bar.count or C.bar.count < 1 then
-		C.bar.count = 1
-	end
-
-	-- C = CTM_Options
-
-	if C.general.welcome then
-		print("|c00FFAA00"..A.addonName.." v"..A.version.." - "..L.welcome.."|r")
-	end
-end)
-
--- First create a frame frame to gather all the objects (make that dragable later)
-local frame = CreateFrame("Frame", A.addonName.."BarFrame", UIParent)
-frame:SetSize(C.bar.width + 2, (C.bar.height * C.bar.count + (C.bar.padding) * C.bar.count - (C.bar.padding)) + 2)
-frame:SetFrameStrata("BACKGROUND")
-frame:SetFrameLevel(1)
-frame:SetPoint(C.frame.position.a1, C.frame.position.af, C.frame.position.a2, C.frame.position.x, C.frame.position.y)
-frame:SetScale(C.general.scale)
-frame.bars = bars
-
--- Background
-frame.bg = frame:CreateTexture(nil, "BACKGROUND", nil, -8)
-frame.bg:SetTexture(1, 1, 1)
-frame.bg:SetAllPoints()
-frame.bg:SetVertexColor(C.frame.bgColor.r, C.frame.bgColor.g, C.frame.bgColor.b, C.frame.bgShow and C.frame.bgColor.a or 0)
-
--- Header
-if C.frame.headerShow then
-	local color = C.frame.headerColor
-
-	frame.header = CreateStatusBar(frame, true)
-	frame.header:SetPoint("TOPLEFT", frame, 0, C.bar.height)
-	frame.header:SetStatusBarColor(color.r, color.g, color.b, color.a)
-
-	frame.headerText = CreateFS(frame.header)
-	frame.headerText:SetPoint("LEFT", frame.header, 2, 0)
-	frame.headerText:SetJustifyH("LEFT")
-	frame.headerText:SetText(format("%s%s", L.gui.threat, ""))
+local function SetPosition(f)
+	local a1, _, a2, x, y = f:GetPoint()
+	C.frame.position = {a1, "UIParent", a2, x, y}
 end
 
-CreateBackdrop(frame, C.backdrop)
+local function OnDragStart(f)
+	f:StartMoving()
+end
 
--- Create StatusBars
-for i = 1, C.bar.count do
-	bars[i] = CreateStatusBar(frame)
-	if i == 1 then
-		bars[i]:SetPoint("TOP", 0, 0)
+local function OnDragStop(f)
+	f:StopMovingOrSizing()
+	SetPosition(f)
+end
+
+local function UpdateFont(fs)
+	fs:SetFont(C.font.family, C.font.size, C.font.style)
+	fs:SetVertexColor(unpack(C.font.color))
+	fs:SetShadowOffset(C.font.shadow and 1 or 0, C.font.shadow and -1 or 0)
+end
+
+function CTM:UpdateFrame()
+	self:SetSize(C.frame.width + 2, (C.bar.height + C.bar.padding - 1) * C.bar.count)
+	self:ClearAllPoints()
+	self:SetPoint(unpack(C.frame.position))
+	self:SetScale(C.frame.scale)
+
+	if not C.frame.locked then
+		self:EnableMouse(true)
+		self:SetMovable(true)
+		self:SetClampedToScreen(true)
+		self:RegisterForDrag("LeftButton")
+		self:SetScript("OnDragStart", OnDragStart)
+		self:SetScript("OnDragStop", OnDragStop)
 	else
-		bars[i]:SetPoint("TOP", bars[i - 1], "BOTTOM", 0, -C.bar.padding + 1)
+		self:EnableMouse(false)
+		self:SetMovable(false)
+	end
+
+	-- Background
+	self.bg:SetAllPoints()
+	self.bg:SetVertexColor(unpack(C.frame.color))
+
+	-- Header
+	if C.frame.headerShow then
+		self.header:SetSize(C.frame.width + 2, C.bar.height)
+
+		self.header:SetPoint("TOPLEFT", self, 0, C.bar.height)
+		self.header:SetStatusBarColor(unpack(C.frame.headerColor))
+
+		self.header.backdrop:SetBackdropColor(0, 0, 0, 0) -- ugly, but okay for now
+		self.header.backdrop:SetBackdropBorderColor(0, 0, 0, C.frame.headerColor[4]) -- adjust alpha for border
+
+		self.headerText:SetText(format("%s%s", L.gui_threat, ""))
+
+		UpdateFont(self.headerText)
+
+		self.header:Show()
+	else
+		self.header:Hide()
+	end
+
+	-- Create StatusBars
+	-- for i = 1, C.bar.count do
+	for i = 1, 40 do
+		if not bars[i] then
+			bars[i] = CreateStatusBar(self)
+		end
+
+		local bar = bars[i]
+
+		if i == 1 then
+			bar:SetPoint("TOP", 0, 0)
+		else
+			bar:SetPoint("TOP", bars[i - 1], "BOTTOM", 0, -C.bar.padding + 1)
+		end
+		bar:SetSize(C.frame.width + 2, C.bar.height)
+
+		-- BG
+		bar.bg:SetTexture(C.bar.texture)
+		-- Name
+		bar.name:SetPoint("LEFT", bar, 3, 0)
+		UpdateFont(bar.name)
+		-- Perc
+		bar.perc:SetPoint("RIGHT", bar, -2, 0)
+		UpdateFont(bar.perc)
+		-- Value
+		bar.val:SetPoint("RIGHT", bar, -40, 0)
+		UpdateFont(bar.val)
+
+		-- Adjust Name
+		bar.name:SetPoint("RIGHT", bar.val, "LEFT", -10, 0) -- right point of name is left point of value
 	end
 end
 
--- Callback Handler
-local function CheckStatusFromCallback()
-	CheckStatus(frame, "CLASSIC_THREAT_UPDATE")
-end
-
--- Events
-frame:SetScript("OnEvent", CheckStatus)
-if A:IsClassic() then
-	ThreatLib:RegisterCallback("Activate", CheckStatusFromCallback)
-	ThreatLib:RegisterCallback("ThreatUpdated", CheckStatusFromCallback)
-	ThreatLib:RequestActiveOnSolo(true)
-else
-	frame:RegisterEvent("UNIT_THREAT_LIST_UPDATE")
-end
-frame:RegisterEvent("PLAYER_TARGET_CHANGED")
-frame:RegisterEvent("PLAYER_ENTERING_WORLD")
-frame:RegisterEvent("PLAYER_REGEN_DISABLED")
-frame:RegisterEvent("PLAYER_REGEN_ENABLED")
-frame:RegisterEvent("GROUP_ROSTER_UPDATE")
-
--- Drag Frame
-A:CreateDragFrame(frame, A.dragFrames, -2, true)
-
--- Create Slash Commands
-A:CreateSlashCmd(A.addonName, A.addonShortcut, A.dragFrames, A.addonColor)
-
 -----------------------------
--- TEST BARS
+-- TEST MODE
 -----------------------------
-local function TestBars()
+local function TestMode()
 	if InCombatLockdown() then return end
 
-	testMode = true
+	C.frame.test = true
 	for i = 1, C.bar.count do
 		threatData[i] = {
-			unit = UnitName("player"),
+			unit = playerName,
 			scaledPercent = i / C.bar.count * 100,
 			threatValue = i * 1e4,
 		}
 		tinsert(bars, i)
 	end
-	UpdateThreatBars(frame)
+	UpdateThreatBars()
 end
-
--- temporary
-SlashCmdList.CTMTEST = function()
-	TestBars()
-end
-SLASH_CTMTEST1 = "/ctmtest"
 
 -----------------------------
 -- NAMEPLATES
 -----------------------------
-local threatColors = {
-	[0] = {0.2, 0.8, 0.2},	-- #33CC33
-	[1] = {1, 1, 0},		-- #FFFF00
-	[2] = {1, 1, 0},		-- #FFFF00
-	[3] = {1, 0, 0}			-- #FF0000
-}
-
-local function UpdateNameplateThreat(self) -- TODO: write on/off tooggle and logic to reverse the order when tanking
-	if not InCombatLockdown() then return end
+local function UpdateNameplateThreat(self)
+	if not InCombatLockdown() or not C.general.nameplateThreat then return end
 	local unit = self.unit
 	if not unit then return end
 	if not unit:match("nameplate%d?$") then return end
@@ -386,14 +409,21 @@ local function UpdateNameplateThreat(self) -- TODO: write on/off tooggle and log
 	if not nameplate then return end
 	local status = UnitThreatSituation("player", unit)
 	if status then
-		local r, g, b = threatColors[status][1], threatColors[status][2], threatColors[status][3]
-		self.healthBar:SetStatusBarColor(r, g, b)
+		if C.general.invertColors then
+			if status == 3 then
+				status = 0
+			elseif status == 0 then
+				status = 3
+			end
+		end
+		status = status + 1 -- to index correctly
+		self.healthBar:SetStatusBarColor(unpack(threatColors[status]))
 	end
 end
 
-if A:IsClassic() then
+if A.classic then
 	-- since UNIT_THREAT_LIST_UPDATE isn't a thing in Classic, health color doesn't update nearly as frequently
-	-- we'll instead hook the range check since it is OnUpdate - gross, but it works
+	-- we'll instead hook the range check since it is OnUpdate - gross, but it works for now
 	hooksecurefunc("CompactUnitFrame_UpdateInRange", UpdateNameplateThreat)
 else
 	hooksecurefunc("CompactUnitFrame_UpdateHealthColor", UpdateNameplateThreat)
@@ -403,10 +433,10 @@ end
 -----------------------------
 -- VERSION CHECK
 -----------------------------
-local check = function(self, event, prefix, message, _, sender)
+local function CheckVersion(self, event, prefix, msg, channel, sender)
 	if event == "CHAT_MSG_ADDON" then
-		if prefix ~= "CTMVer" or sender == T.name then return end
-		if tonumber(message) ~= nil and tonumber(message) > tonumber(A.version) then
+		if prefix ~= "CTMVer" or sender == playerName then return end
+		if tonumber(msg) ~= nil and tonumber(msg) > tonumber(A.version) then
 			print("|cffff0000"..L.outdated.."|r")
 			self:UnregisterEvent("CHAT_MSG_ADDON")
 		end
@@ -423,9 +453,489 @@ local check = function(self, event, prefix, message, _, sender)
 	end
 end
 
-local VersionCheck = CreateFrame("Frame")
-VersionCheck:RegisterEvent("PLAYER_ENTERING_WORLD")
-VersionCheck:RegisterEvent("GROUP_ROSTER_UPDATE")
-VersionCheck:RegisterEvent("CHAT_MSG_ADDON")
-VersionCheck:SetScript("OnEvent", check)
-C_ChatInfo.RegisterAddonMessagePrefix("CTMVer")
+-----------------------------
+-- EVENTS
+-----------------------------
+CTM:RegisterEvent("PLAYER_LOGIN")
+CTM:SetScript("OnEvent", function(self, event, ...)
+	return self[event](self, event, ...)
+end)
+
+function CTM:PLAYER_ENTERING_WORLD(...)
+	playerName = UnitName("player")
+	playerGUID = UnitGUID("player")
+	CheckVersion(self, ...)
+	CheckStatus(self, ...)
+	self.PLAYER_ENTERING_WORLD = nil
+end
+
+function CTM:CHAT_MSG_ADDON(...)
+	self:CheckVersion(self, ...)
+	self.CHAT_MSG_ADDON = nil
+end
+
+function CTM:PLAYER_TARGET_CHANGED(...)
+	C.frame.test = false
+	CheckStatus(self, ...)
+end
+
+function CTM:GROUP_ROSTER_UPDATE(...)
+	CheckVersion(self, ...)
+	CheckStatus(self, ...)
+end
+
+function CTM:PLAYER_REGEN_DISABLED(...)
+	C.frame.test = false
+	CheckStatus(self, ...)
+end
+
+function CTM:PLAYER_REGEN_ENABLED(...)
+	collectgarbage()
+	C.frame.test = false
+	CheckStatus(self, ...)
+end
+
+function CTM:UNIT_THREAT_LIST_UPDATE(...)
+	C.frame.test = false
+	CheckStatus(self, ...)
+end
+
+function CTM:PLAYER_LOGIN()
+	C_ChatInfo.RegisterAddonMessagePrefix("CTMVer")
+
+	CTM_Options = CTM_Options or {}
+	C = CopyDefaults(A.defaultConfig, CTM_Options)
+	A.defaultConfig = nil
+
+	-- Minimum of 1 Row
+	if not C.bar.count or C.bar.count < 1 then
+		C.bar.count = 1
+	end
+
+	-- Adjust fonts for CJK
+	if A.locale == "koKR" or A.locale == "zhCN" or A.locale == "zhTW" then
+		C.font.family = _G.STANDARD_TEXT_FONT
+	end
+
+	-- Setup frame
+	self:SetFrameStrata("BACKGROUND")
+	self:SetFrameLevel(1)
+	self:ClearAllPoints()
+	self:SetPoint(unpack(C.frame.position))
+
+	self.bg = self:CreateTexture(nil, "BACKGROUND", nil, -8)
+	self.bg:SetColorTexture(1, 1, 1, 1)
+	self.header = CreateStatusBar(self, true)
+	self.headerText = CreateFS(self.header)
+	self.headerText:SetPoint("LEFT", self.header, 3, 0)
+	self.headerText:SetJustifyH("LEFT")
+	self.bars = bars
+
+	self:UpdateFrame()
+
+	-- Get Colors
+	threatColors = {
+		[1] = C.general.threatColors.good,
+		[2] = C.general.threatColors.neutral,
+		[3] = C.general.threatColors.neutral,
+		[4] = C.general.threatColors.bad
+	}
+
+	-- Test Mode
+	C.frame.test = false
+
+	if C.general.welcome then
+		print("|c00FFAA00"..A.addonName.." v"..A.version.." - "..L.welcome.."|r")
+	end
+
+	self:RegisterEvent("PLAYER_ENTERING_WORLD")
+	self:RegisterEvent("GROUP_ROSTER_UPDATE")
+	self:RegisterEvent("CHAT_MSG_ADDON")
+	self:RegisterEvent("PLAYER_TARGET_CHANGED")
+	self:RegisterEvent("PLAYER_REGEN_DISABLED")
+	self:RegisterEvent("PLAYER_REGEN_ENABLED")
+
+	if A.classic then
+		ThreatLib:RegisterCallback("Activate", CheckStatus)
+		ThreatLib:RegisterCallback("Deactivate", CheckStatus)
+		ThreatLib:RegisterCallback("ThreatUpdated", CheckStatus)
+	else
+		self:RegisterEvent("UNIT_THREAT_LIST_UPDATE")
+	end
+
+	self:SetupOptions()
+
+	self:UnregisterEvent("PLAYER_LOGIN")
+	self.PLAYER_LOGIN = nil
+end
+
+-----------------------------
+-- OPTIONS
+-----------------------------
+function CTM:SetupOptions()
+	LibStub("AceConfigRegistry-3.0"):RegisterOptionsTable(A.addonName, self.configTable)
+
+	local ACD = LibStub("AceConfigDialog-3.0")
+	self.config = {}
+	self.config.ctm = ACD:AddToBlizOptions(A.addonName, A.addonName, nil, "general")
+	self.config.appearance = ACD:AddToBlizOptions(A.addonName, L.appearance, A.addonName, "appearance")
+	self.config.warnings = ACD:AddToBlizOptions(A.addonName, L.warnings, A.addonName, "warnings")
+end
+
+CTM.configTable = {
+	type = "group",
+	name = A.addonName,
+	get = function(info)
+		return C[info[1]][info[2]]
+	end,
+	set = function(info, value) C[info[1]][info[2]] = value end,
+	args = {
+		general = {
+			order = 1,
+			type = "group",
+			name = L.general,
+			args = {
+				general = {
+					order = 1,
+					name = L.general,
+					type = "header",
+				},
+				welcome = {
+					order = 2,
+					name = L.general_welcome,
+					type = "toggle",
+					width = "full",
+				},
+				--[[
+				minimap = {
+					order = 3,
+					name = L.general_test,
+					type = "toggle",
+					width = "full",
+				},
+				--]]
+				--[[
+				ignorePets = {
+					order = 4,
+					name = L.general_ignorePets,
+					type = "toggle",
+					width = "full",
+				},
+				--]]
+				visibility = {
+					order = 5,
+					name = L.visibility,
+					type = "header",
+				},
+				hideOOC = {
+					order = 6,
+					name = L.visibility_hideOOC,
+					type = "toggle",
+					width = "full",
+					set = function(info, value)
+						C[info[1]][info[2]] = value
+						CheckStatus()
+					end,
+				},
+				hideSolo = {
+					order = 7,
+					name = L.visibility_hideSolo,
+					type = "toggle",
+					width = "full",
+					set = function(info, value)
+						C[info[1]][info[2]] = value
+						CheckStatus()
+					end,
+				},
+				hideInPVP = {
+					order = 8,
+					name = L.visibility_hideInPvP,
+					type = "toggle",
+					width = "full",
+					set = function(info, value)
+						C[info[1]][info[2]] = value
+						CheckStatus()
+					end,
+				},
+				nameplates = {
+					order = 9,
+					name = L.nameplates,
+					type = "header",
+				},
+				nameplateThreat = {
+					order = 10,
+					name = L.nameplates_enable,
+					type = "toggle",
+					width = "full",
+				},
+				invertColors = {
+					order = 11,
+					name = L.nameplates_invert,
+					type = "toggle",
+					width = "full",
+				},
+				threatColors = {
+					order = 12,
+					name = L.nameplate_colors,
+					type = "group",
+					inline = true,
+					get = function(info)
+						return unpack(C[info[1]][info[2]][info[3]])
+					end,
+					set = function(info, r, g, b)
+						local cfg = C[info[1]][info[2]][info[3]]
+						cfg[1] = r
+						cfg[2] = g
+						cfg[3] = b
+					end,
+
+					args = {
+						good = {
+							order = 1,
+							name = L.color_good,
+							type = "color",
+							hasAlpha = false,
+						},
+						neutral = {
+							order = 2,
+							name = L.color_neutral,
+							type = "color",
+							hasAlpha = false,
+						},
+						bad = {
+							order = 3,
+							name = L.color_bad,
+							type = "color",
+							hasAlpha = false,
+						},
+					},
+				},
+			},
+		},
+		appearance = {
+			order = 2,
+			type = "group",
+			name = L.appearance,
+			get = function(info)
+				return C[info[2]][info[3]]
+			end,
+			set = function(info, value)
+				C[info[2]][info[3]] = value
+				CTM:UpdateFrame()
+			end,
+			args = {
+				frame = {
+					order = 1,
+					name = L.frame,
+					type = "group",
+					inline = true,
+					args = {
+						test = {
+							order = 1,
+							name = L.frame_test,
+							type = "execute",
+							width = "normal",
+							func = function(info, value) TestMode() end,
+						},
+						locked = {
+							order = 2,
+							name = L.frame_lock,
+							type = "toggle",
+							width = "normal",
+						},
+						scale = {
+							order = 3,
+							name = L.frame_scale,
+							type = "range",
+							min = 50,
+							max = 300,
+							step = 1,
+							bigStep = 10,
+							width = "normal",
+							get = function(info)
+								return C[info[2]][info[3]] * 100
+							end,
+							set = function(info, value)
+								C[info[2]][info[3]] = value / 100
+								CTM:UpdateFrame()
+							end,
+						},
+						-- width here
+						headerShow = {
+							order = 4,
+							name = L.frame_headerShow,
+							type = "toggle",
+							width = "normal",
+						},
+						frameColors = {
+							order = 5,
+							name = L.frame_bg,
+							type = "group",
+							inline = true,
+							get = function(info)
+								return unpack(C[info[2]][info[4]])
+							end,
+							set = function(info, r, g, b, a)
+								local cfg = C[info[2]][info[4]]
+								cfg[1] = r
+								cfg[2] = g
+								cfg[3] = b
+								cfg[4] = a
+								CTM:UpdateFrame()
+							end,
+
+							args = {
+								color = {
+									order = 1,
+									name = L.frame,
+									type = "color",
+									hasAlpha = true,
+								},
+								headerColor = {
+									order = 2,
+									name = L.frame_header,
+									type = "color",
+									hasAlpha = true,
+								},
+							},
+						},
+					},
+				},
+				bar = {
+					order = 2,
+					name = L.bar,
+					type = "group",
+					inline = true,
+					args = {
+						count = {
+							order = 1,
+							name = L.bar_count,
+							type = "range",
+							min = 1,
+							max = 40,
+							step = 1,
+							width = "normal",
+							set = function(info, value)
+								local prev = C[info[2]][info[3]]
+								C[info[2]][info[3]] = value
+								if prev > value then
+									for i = value + 1, prev do
+										CTM.bars[i]:Hide()
+									end
+								end
+								CTM:UpdateFrame()
+							end,
+						},
+						-- growth direction
+						height = {
+							order = 3,
+							name = L.bar_height,
+							type = "range",
+							min = 6,
+							max = 64,
+							step = 1,
+							width = "normal",
+							set = function(info, value)
+								C[info[2]][info[3]] = value
+								CTM:UpdateFrame()
+							end,
+						},
+						-- padding
+						-- marker
+						-- texture
+						-- custom color / class color
+						-- alpha (for when using class colors)
+						-- color / colormod
+					},
+				},
+				font = {
+					order = 3,
+					name = L.font,
+					type = "group",
+					inline = true,
+					args = {
+						-- name
+						size = {
+							order = 2,
+							name = L.font_size,
+							type = "range",
+							min = 6,
+							max = 64,
+							step = 1,
+							width = "normal",
+						},
+						style = {
+							order = 3,
+							name = L.font_style,
+							type = "select",
+							values = {
+								[""] = "NONE",
+								["OUTLINE"] = "OUTLINE",
+								["THICKOUTLINE"] = "THICKOUTLINE",
+							},
+							style = "dropdown",
+							width = "normal",
+						},
+						shadow = {
+							order = 4,
+							name = L.font_shadow,
+							type = "toggle",
+							width = "full",
+						},
+					},
+				},
+			},
+		},
+		--[[
+		warnings = {
+			order = 3,
+			type = "group",
+			name = L.warnings,
+			args = {
+				visual = {
+					order = 1,
+					name = L.warnings_visual,
+					type = "toggle",
+					width = "full",
+				},
+				sounds = {
+					order = 2,
+					name = L.warnings_sounds,
+					type = "toggle",
+					width = "full",
+				},
+				threshold = {
+					order = 3,
+					name = L.warnings_threshold,
+					type = "range",
+					min = 50,
+					max = 100,
+					step = 1,
+					bigStep = 10,
+					width = "normal",
+					-- get / set
+				},
+				warningFile = {
+					order = 4,
+					name = L.sound_warningFile,
+					type = "toggle",
+					width = "full",
+				},
+				pulledFile = {
+					order = 5,
+					name = L.sound_pulledFile,
+					type = "toggle",
+					width = "full",
+				},
+			},
+		},
+		--]]
+	},
+}
+
+SLASH_CLASSICTHREATMETER1 = "/ctm"
+SLASH_CLASSICTHREATMETER2 = "/threat"
+SLASH_CLASSICTHREATMETER3 = "/classicthreatmeter"
+SlashCmdList["CLASSICTHREATMETER"] = function()
+	LibStub("AceConfigDialog-3.0"):Open("ClassicThreatMeter")
+end

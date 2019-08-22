@@ -1,8 +1,11 @@
 local A, C, L, _ = unpack(select(2, ...))
-if GetLocale() ~= "zhCN" then return end
+if A.locale ~= "zhCN" then return end
 
 -----------------------------
 --	zhCN client
 -----------------------------
 -- main frame
 L.gui.threat		= "威胁"
+
+-- config frame
+L.default			= "默认"
