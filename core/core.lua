@@ -304,7 +304,7 @@ local function UpdateFont(fs)
 end
 
 function CTM:UpdateFrame()
-	self:SetSize(C.frame.width + 2, (C.bar.height + C.bar.padding - 1) * C.bar.count)
+	self:SetSize(C.frame.width + 2, ((C.bar.height + C.bar.padding - 1) * C.bar.count) - C.bar.padding)
 	self:ClearAllPoints()
 	self:SetPoint(unpack(C.frame.position))
 	self:SetScale(C.frame.scale)
@@ -365,7 +365,7 @@ function CTM:UpdateFrame()
 		-- BG
 		bar.bg:SetTexture(C.bar.texture)
 		-- Name
-		bar.name:SetPoint("LEFT", bar, 3, 0)
+		bar.name:SetPoint("LEFT", bar, 4, 0)
 		UpdateFont(bar.name)
 		-- Perc
 		bar.perc:SetPoint("RIGHT", bar, -2, 0)
@@ -527,7 +527,7 @@ function CTM:PLAYER_LOGIN()
 	self.bg:SetColorTexture(1, 1, 1, 1)
 	self.header = CreateStatusBar(self, true)
 	self.headerText = CreateFS(self.header)
-	self.headerText:SetPoint("LEFT", self.header, 3, -1)
+	self.headerText:SetPoint("LEFT", self.header, 4, -1)
 	self.headerText:SetJustifyH("LEFT")
 	self.bars = bars
 
@@ -835,10 +835,15 @@ CTM.configTable = {
 							max = 64,
 							step = 1,
 							width = "normal",
-							set = function(info, value)
-								C[info[2]][info[3]] = value
-								CTM:UpdateFrame()
-							end,
+						},
+						padding = {
+							order = 4,
+							name = L.bar_padding,
+							type = "range",
+							min = 0,
+							max = 16,
+							step = 1,
+							width = "normal",
 						},
 						-- padding
 						-- marker
