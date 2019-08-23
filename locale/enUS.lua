@@ -14,7 +14,7 @@ L.incompatible			= "CTM is out of date and will not be compatible for this group
 L.gui_threat			= "Threat"
 
 -- config frame
-L.default				= "Default"
+L.reset					= "Reset to Defaults"
 
 L.general				= "General"
 L.general_welcome		= "Display welcome message when logging in."

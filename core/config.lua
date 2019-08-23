@@ -70,7 +70,7 @@ A.defaultConfig.font = {
 	size				= 12,									-- font size
 	style				= "OUTLINE",							-- font style
 	color				= {1, 1, 1, 1},							-- font color
-	shadow				= false,								-- font dropshadow
+	shadow				= true,									-- font dropshadow
 }
 
 -- warning settings

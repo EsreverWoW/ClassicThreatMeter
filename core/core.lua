@@ -110,8 +110,6 @@ end
 local function CreateStatusBar(parent, header)
 	-- StatusBar
 	local bar = CreateFrame("StatusBar", nil, parent)
-	bar:SetSize(C.frame.width + 2, C.bar.height)
-	bar:SetStatusBarTexture(C.bar.texture)
 	bar:SetMinMaxValues(0, 100)
 	-- Backdrop
 	CreateBackdrop(bar, C.backdrop)
@@ -329,9 +327,10 @@ function CTM:UpdateFrame()
 
 	-- Header
 	if C.frame.headerShow then
-		self.header:SetSize(C.frame.width + 2, C.bar.height)
+		self.header:SetSize(C.frame.width + 4, C.bar.height)
+		self.header:SetStatusBarTexture(C.bar.texture)
 
-		self.header:SetPoint("TOPLEFT", self, 0, C.bar.height)
+		self.header:SetPoint("TOPLEFT", self, -1, C.bar.height - 1)
 		self.header:SetStatusBarColor(unpack(C.frame.headerColor))
 
 		self.header.backdrop:SetBackdropColor(0, 0, 0, 0) -- ugly, but okay for now
@@ -360,7 +359,8 @@ function CTM:UpdateFrame()
 		else
 			bar:SetPoint("TOP", bars[i - 1], "BOTTOM", 0, -C.bar.padding + 1)
 		end
-		bar:SetSize(C.frame.width + 2, C.bar.height)
+		bar:SetSize(C.frame.width + 4, C.bar.height)
+		bar:SetStatusBarTexture(C.bar.texture)
 
 		-- BG
 		bar.bg:SetTexture(C.bar.texture)
@@ -371,7 +371,8 @@ function CTM:UpdateFrame()
 		bar.perc:SetPoint("RIGHT", bar, -2, 0)
 		UpdateFont(bar.perc)
 		-- Value
-		bar.val:SetPoint("RIGHT", bar, -40, 0)
+		-- bar.val:SetPoint("RIGHT", bar, -40, 0)
+		bar.val:SetPoint("RIGHT", bar, -(C.font.size * 3.5), 0)
 		UpdateFont(bar.val)
 
 		-- Adjust Name
@@ -505,7 +506,6 @@ function CTM:PLAYER_LOGIN()
 
 	CTM_Options = CTM_Options or {}
 	C = CopyDefaults(A.defaultConfig, CTM_Options)
-	A.defaultConfig = nil
 
 	-- Minimum of 1 Row
 	if not C.bar.count or C.bar.count < 1 then
@@ -527,7 +527,7 @@ function CTM:PLAYER_LOGIN()
 	self.bg:SetColorTexture(1, 1, 1, 1)
 	self.header = CreateStatusBar(self, true)
 	self.headerText = CreateFS(self.header)
-	self.headerText:SetPoint("LEFT", self.header, 3, 0)
+	self.headerText:SetPoint("LEFT", self.header, 3, -1)
 	self.headerText:SetJustifyH("LEFT")
 	self.bars = bars
 
@@ -577,9 +577,9 @@ function CTM:SetupOptions()
 
 	local ACD = LibStub("AceConfigDialog-3.0")
 	self.config = {}
-	self.config.ctm = ACD:AddToBlizOptions(A.addonName, A.addonName, nil, "general")
+	self.config.general = ACD:AddToBlizOptions(A.addonName, A.addonName, nil, "general")
 	self.config.appearance = ACD:AddToBlizOptions(A.addonName, L.appearance, A.addonName, "appearance")
-	self.config.warnings = ACD:AddToBlizOptions(A.addonName, L.warnings, A.addonName, "warnings")
+	-- self.config.warnings = ACD:AddToBlizOptions(A.addonName, L.warnings, A.addonName, "warnings")
 end
 
 CTM.configTable = {
@@ -769,7 +769,7 @@ CTM.configTable = {
 						},
 						frameColors = {
 							order = 5,
-							name = L.frame_bg,
+							name = L.color,
 							type = "group",
 							inline = true,
 							get = function(info)
@@ -787,7 +787,7 @@ CTM.configTable = {
 							args = {
 								color = {
 									order = 1,
-									name = L.frame,
+									name = L.frame_bg,
 									type = "color",
 									hasAlpha = true,
 								},
@@ -884,6 +884,18 @@ CTM.configTable = {
 						},
 					},
 				},
+				reset = {
+					order = 4,
+					name = L.reset,
+					type = "execute",
+					width = "normal",
+					func = function(info, value)
+						CTM_Options = {}
+						C = CopyDefaults(A.defaultConfig, CTM_Options)
+						CTM:UpdateFrame()
+					end,
+				},
+				
 			},
 		},
 		--[[
