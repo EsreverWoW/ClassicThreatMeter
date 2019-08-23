@@ -1,12 +1,26 @@
-# ClassicThreatMeter (Experimental)
-A simple threat meter for WoW Classic (1.13.2)
+# ClassicThreatMeter (Experimental) [!["Open Issues"](https://img.shields.io/github/issues-raw/EsreverWoW/ClassicThreatMeter.svg)](https://github.com/EsreverWoW/ClassicThreatMeter/issues) 
+ClassicThreatMeter is a threat meter for WoW Classic that attempts to provide reasonably accurate estimates of your group's relative threat values against enemy NPCs by recording pertinent data from the combat log and making calculations from that data.
 
-**Notes:**
- - Other players must have ClassicThreatMeter or a compatible AddOn enabled in order to track their threat similar to how KTM/Omen required compatible AddOns communicating threat to one another in Vanilla/TBC.
- - This has yet to be tested in Classic. Please forgive any bugs that may arise on launch day and allow me some time to fix them.
- - Configuration is limited to what is available in the `/ctm` slash command until I implement a more robust GUI config.
+**Note:**
+ - This has yet to be fully tested in Classic. Please forgive any bugs that may arise on launch day and allow me some time to fix them. If you happen to notice any, please check the [issue tracker](https://github.com/EsreverWoW/ClassicThreatMeter/issues) and report them there if someone hasn't yet already. Thanks!
 
-<img src="https://i.imgur.com/r8hiXzL.png">
+# FAQ
+**Q: Why am I not seeing other players in ClassicThreatMeter?**
+A: Other players must have ClassicThreatMeter or a compatible AddOn enabled in order to track their threat similar to how KLH Threat Meter/Omen required compatible AddOns communicating threat to one another in Vanilla/TBC.
+
+**Q: Why isn't ClassicThreatMeter using the built-in threat API?**
+A: To answer simply, it can't! Blizzard added in a threat API in patch 3.0.2 for WotLK and has been in the game since, but it has been purposely removed for WoW Classic, which means we must rely on combat log parsing.
+
+**Q: How does ClassicThreatMeter handle multiple targets?**
+A: The combat log in WoW Classic is fortunately much more detailed than that which was available in the game originally before patch 2.4. This allows us to track NPCs by GUID (global unique identifier), and there should be no issues with mobs having the same name and threat becoming muddled between them. It is also designed in such a way that effects that are meant to add divided threat between active targets, such as heals and buffs, are able to do so.
+
+**Q: Why aren't there more options to customize the threat window?**
+A: ClassicThreatMeter is still a very young AddOn. More features and customization options will come over time.
+
+# Sreenshots
+<img src="https://i.imgur.com/7ipFacm.png">
+<img src="https://i.imgur.com/FUg8kLg.png">
+<img src="https://i.imgur.com/bDxNw6X.png">
 
 **Sources:**
  - https://github.com/magey/classic-warrior/wiki/Threat-Mechanics
