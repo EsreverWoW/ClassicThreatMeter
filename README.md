@@ -4,6 +4,9 @@ ClassicThreatMeter is a threat meter for WoW Classic that attempts to provide re
 **Note:**
  - This has yet to be fully tested in Classic. Please forgive any bugs that may arise on launch day and allow me some time to fix them. If you happen to notice any, please check the [issue tracker](https://github.com/EsreverWoW/ClassicThreatMeter/issues) and report them there if someone hasn't yet already. Thanks!
 
+# Download
+ - [WoWInterface](https://www.wowinterface.com/downloads/info25165-ClassicThreatMeter.html)
+
 # FAQ
 **Q: Why am I not seeing other players in ClassicThreatMeter?**
  
