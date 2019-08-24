@@ -154,7 +154,7 @@ ThreatLib_funcs[#ThreatLib_funcs + 1] = function()
 					end
 				end
 			end
-		elseif GetNumGroupMembers > 0 then
+		elseif GetNumGroupMembers() > 0 then
 			if UnitIsGroupLeader("player") and unit == "player" then
 				return true
 			else
