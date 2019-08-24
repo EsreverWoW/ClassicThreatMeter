@@ -3,18 +3,28 @@ local A, C, L, _ = unpack(select(2, ...))
 -----------------------------
 --	enUS and enGB clients
 -----------------------------
--- welcome message
-L.welcome				= "Type /ctm for options."
-
--- version check
-L.outdated				= "New version of CTM available! Please download the latest version."
-L.incompatible			= "CTM is out of date and will not be compatible for this group. Please upgrade immediately."
-
 -- main frame
 L.gui_threat			= "Threat"
+L.gui_config			= "Open Config"
 
 -- config frame
 L.reset					= "Reset to Defaults"
+
+-- messages
+L.message_welcome		= "Type /ctm for options."
+L.message_leader		= "You must be the group leader or have assist to do this."
+L.message_outdated		= "New version of CTM available! Please download the latest version."
+L.message_incompatible	= "CTM is out of date and will not be compatible for this group. Please upgrade immediately."
+
+-- version check
+L.version				= "Version Check"
+L.version_check			= "Check Outdated"
+L.version_check_all		= "Check All"
+L.version_notify		= "Notify Outdated"
+L.version_list			= "Version Check: All Clients"
+L.version_list_outdated	= "Version Check: Outdated Clients"
+L.version_divider		= "--------------------------------"
+L.version_incompatible	= "Not compatible!"
 
 L.general				= "General"
 L.general_welcome		= "Display welcome message when logging in."

@@ -5,11 +5,15 @@ local A, C, L, _ = unpack(select(2, ...))
 -----------------------------
 -- upvalues
 local _G		= _G
-local unpack	= _G.unpack
 local select	= _G.select
+local unpack	= _G.unpack
 local tonumber	= _G.tonumber
+local type		= _G.type
 local floor		= _G.math.floor
 local format	= _G.string.format
+
+local ipairs	= _G.ipairs
+local pairs		= _G.pairs
 local tinsert	= _G.table.insert
 local sort		= _G.table.sort
 local wipe		= _G.table.wipe
@@ -76,12 +80,13 @@ local function CopyDefaults(t1, t2)
 	return t2
 end
 
+local backdrop = {}
 local function CreateBackdrop(parent, cfg)
 	local f = CreateFrame("Frame", nil, parent)
 	f:SetPoint("TOPLEFT", parent, "TOPLEFT", -cfg.inset, cfg.inset)
 	f:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", cfg.inset, -cfg.inset)
 	-- Backdrop Settings
-	local backdrop = {
+	backdrop = {
 		bgFile = cfg.bgFile,
 		edgeFile = cfg.edgeFile,
 		tile = cfg.tile,
@@ -155,13 +160,23 @@ local function NumFormat(v)
 	end
 end
 
+local colorUnit = {}
+local colorFallback = {}
+local colorMarker = {}
+
 local function GetColor(unit)
-	if UnitIsPlayer(unit) then
-		local color = RAID_CLASS_COLORS[select(2, UnitClass(unit))]
-		return {color.r, color.g, color.b, C.bar.alpha}
+	if unit then
+		if C.bar.marker and UnitGUID(unit) == playerGUID then
+			return colorMarker
+		elseif UnitIsPlayer(unit) then
+			colorUnit = RAID_CLASS_COLORS[select(2, UnitClass(unit))]
+		else
+			colorUnit = FACTION_BAR_COLORS[UnitReaction(unit, "player")]
+		end
+		colorUnit = {colorUnit.r, colorUnit.g, colorUnit.b, C.bar.alpha}
+		return colorUnit
 	else
-		local color = FACTION_BAR_COLORS[UnitReaction(unit, "player")]
-		return {color.r, color.g, color.b, C.bar.alpha}
+		return colorFallback
 	end
 end
 
@@ -179,10 +194,7 @@ local function UpdateThreatBars()
 			bar.val:SetText(NumFormat(data.threatValue))
 			bar.perc:SetText(floor(data.scaledPercent).."%")
 			bar:SetValue(data.scaledPercent)
-			local color = GetColor(data.unit) or {0.8, 0, 0.8, C.bar.alpha}
-			if C.bar.marker and UnitGUID(data.unit) == playerGUID then
-				color = {0.8, 0, 0, C.bar.alpha}
-			end
+			local color = GetColor(data.unit)
 			bar:SetStatusBarColor(unpack(color))
 			bar.bg:SetVertexColor(color[1] * C.bar.colorMod, color[2] * C.bar.colorMod, color[3] * C.bar.colorMod, C.bar.alpha)
 			bar.backdrop:SetBackdropColor(unpack(C.backdrop.bgColor))
@@ -250,8 +262,8 @@ local function CheckStatus()
 			if numGroupMembers > 0 then
 				local unit = inRaid and "raid" or "party"
 				for i = 1, inRaid and numGroupMembers or 4 do
-					UpdateThreatData(unit..i)
-					UpdateThreatData(unit.."pet"..i)
+					UpdateThreatData(unit .. i)
+					UpdateThreatData(unit .. "pet" .. i)
 				end
 				-- party excludes player/pet
 				if not inRaid then
@@ -417,7 +429,6 @@ local function UpdateNameplateThreat(self)
 				status = 3
 			end
 		end
-		status = status + 1 -- to index correctly
 		self.healthBar:SetStatusBarColor(unpack(threatColors[status]))
 	end
 end
@@ -434,7 +445,76 @@ end
 -----------------------------
 -- VERSION CHECK
 -----------------------------
-local function CheckVersion(self, event, prefix, msg, channel, sender)
+local group = {}
+local groupSort = {}
+
+local function CheckVersion(onlyOutdated)
+	if onlyOutdated then
+		print(L.version_list_outdated)
+	else
+		print(L.version_list)
+	end
+	local latestRevision = ThreatLib.latestSeenRevision
+	local revisions = ThreatLib.partyMemberRevisions
+	local agents = ThreatLib.partyMemberAgents
+	for k, v in pairs(group) do
+		group[k] = nil
+	end
+	local numGroupMembers = GetNumGroupMembers()
+	local inRaid = IsInRaid()
+	if numGroupMembers > 0 then
+		local unit = inRaid and "raid" or "party"
+		for i = 1, inRaid and numGroupMembers or 4 do
+			local name = UnitName(unit .. i)
+			if name then
+				group[name] = true
+			end
+		end
+		for i = 1, #groupSort do
+			tremove(groupSort)
+		end
+		for k, _ in pairs(group) do
+			tinsert(groupSort, k)
+		end
+		table.sort(groupSort)
+		print(L.version_divider)
+		for _, v in ipairs(groupSort) do
+			if not onlyOutdated or (not revisions[v] or revisions[v] < (latestRevision or 0)) then
+				print(("%s: %s / %s %s"):format(v, agents[v] or ("|cff666666" .. UNKNOWN .. "|r"), revisions[v] or ("|cff666666" .. UNKNOWN .. "|r"), ThreatLib:IsCompatible(v) and "" or " - |cffff0000" .. L.version_incompatible))
+			end
+		end
+	end
+end
+
+local function NotifyOldClients()
+	if not ThreatLib:IsGroupOfficer("player") then
+		print(L.message_leader)
+		return
+	end
+	local latestRevision = ThreatLib.latestSeenRevision
+	local revisions = ThreatLib.partyMemberRevisions
+	local agents = ThreatLib.partyMemberAgents
+	local numGroupMembers = GetNumGroupMembers()
+	local inRaid = IsInRaid()
+	if numGroupMembers > 0 then
+		local unit = inRaid and "raid" or "party"
+		for i = 1, inRaid and numGroupMembers or 4 do
+			local name = UnitName(unit .. i)
+			if name then
+				if ThreatLib:IsCompatible(name) then
+					if revisions[name] and revisions[name] < latestRevision then
+						SendChatMessage(L.message_outdated, "WHISPER", nil, name)
+					end
+				else
+					SendChatMessage(L.message_incompatible, "WHISPER", nil, name)
+				end
+			end
+		end
+	end
+end
+
+--[[
+local function CheckVersionOLD(self, event, prefix, msg, channel, sender)
 	if event == "CHAT_MSG_ADDON" then
 		if prefix ~= "CTMVer" or sender == playerName then return end
 		if tonumber(msg) ~= nil and tonumber(msg) > tonumber(A.version) then
@@ -453,6 +533,7 @@ local function CheckVersion(self, event, prefix, msg, channel, sender)
 		end
 	end
 end
+--]]
 
 -----------------------------
 -- EVENTS
@@ -465,40 +546,35 @@ end)
 function CTM:PLAYER_ENTERING_WORLD(...)
 	playerName = UnitName("player")
 	playerGUID = UnitGUID("player")
-	CheckVersion(self, ...)
-	CheckStatus(self, ...)
+	-- CheckVersionOLD(self, ...)
+	CheckStatus()
 	self.PLAYER_ENTERING_WORLD = nil
-end
-
-function CTM:CHAT_MSG_ADDON(...)
-	self:CheckVersion(self, ...)
-	self.CHAT_MSG_ADDON = nil
 end
 
 function CTM:PLAYER_TARGET_CHANGED(...)
 	C.frame.test = false
-	CheckStatus(self, ...)
+	CheckStatus()
 end
 
 function CTM:GROUP_ROSTER_UPDATE(...)
-	CheckVersion(self, ...)
-	CheckStatus(self, ...)
+	-- CheckVersionOLD(self, ...)
+	CheckStatus()
 end
 
 function CTM:PLAYER_REGEN_DISABLED(...)
 	C.frame.test = false
-	CheckStatus(self, ...)
+	CheckStatus()
 end
 
 function CTM:PLAYER_REGEN_ENABLED(...)
 	collectgarbage()
 	C.frame.test = false
-	CheckStatus(self, ...)
+	CheckStatus()
 end
 
 function CTM:UNIT_THREAT_LIST_UPDATE(...)
 	C.frame.test = false
-	CheckStatus(self, ...)
+	CheckStatus()
 end
 
 function CTM:PLAYER_LOGIN()
@@ -517,6 +593,10 @@ function CTM:PLAYER_LOGIN()
 		C.font.family = _G.STANDARD_TEXT_FONT
 	end
 
+	-- Setup Menu
+	CTM.Menu = CreateFrame("Frame", A.addonName.."MenuFrame", UIParent, "UIDropDownMenuTemplate")
+	self:UpdateMenu()
+
 	-- Setup frame
 	self:SetFrameStrata("BACKGROUND")
 	self:SetFrameLevel(1)
@@ -525,32 +605,44 @@ function CTM:PLAYER_LOGIN()
 
 	self.bg = self:CreateTexture(nil, "BACKGROUND", nil, -8)
 	self.bg:SetColorTexture(1, 1, 1, 1)
+
 	self.header = CreateStatusBar(self, true)
+	self.header:SetScript("OnMouseUp", function(self, button)
+		if button == "RightButton" then
+			EasyMenu(CTM.menuTable, CTM.Menu, "cursor", 0, 0, "MENU")
+		end
+	end)
+
 	self.headerText = CreateFS(self.header)
 	self.headerText:SetPoint("LEFT", self.header, 4, -1)
 	self.headerText:SetJustifyH("LEFT")
+
 	self.bars = bars
 
 	self:UpdateFrame()
 
 	-- Get Colors
+	colorUnit = {}
+	colorFallback = {0.8, 0, 0.8, C.bar.alpha}
+	colorMarker = {0.8, 0, 0, C.bar.alpha}
+
 	threatColors = {
-		[1] = C.general.threatColors.good,
+		[0] = C.general.threatColors.good,
+		[1] = C.general.threatColors.neutral,
 		[2] = C.general.threatColors.neutral,
-		[3] = C.general.threatColors.neutral,
-		[4] = C.general.threatColors.bad
+		[3] = C.general.threatColors.bad
 	}
 
 	-- Test Mode
 	C.frame.test = false
 
 	if C.general.welcome then
-		print("|c00FFAA00"..A.addonName.." v"..A.version.." - "..L.welcome.."|r")
+		print("|c00FFAA00"..A.addonName.." v"..A.version.." - "..L.message_welcome.."|r")
 	end
 
 	self:RegisterEvent("PLAYER_ENTERING_WORLD")
 	self:RegisterEvent("GROUP_ROSTER_UPDATE")
-	self:RegisterEvent("CHAT_MSG_ADDON")
+	-- self:RegisterEvent("CHAT_MSG_ADDON")
 	self:RegisterEvent("PLAYER_TARGET_CHANGED")
 	self:RegisterEvent("PLAYER_REGEN_DISABLED")
 	self:RegisterEvent("PLAYER_REGEN_ENABLED")
@@ -563,16 +655,42 @@ function CTM:PLAYER_LOGIN()
 		self:RegisterEvent("UNIT_THREAT_LIST_UPDATE")
 	end
 
-	self:SetupOptions()
+	self:SetupConfig()
 
 	self:UnregisterEvent("PLAYER_LOGIN")
 	self.PLAYER_LOGIN = nil
 end
 
 -----------------------------
--- OPTIONS
+-- CONFIG
 -----------------------------
-function CTM:SetupOptions()
+function CTM:UpdateMenu()
+	CTM.menuTable = {
+		{text = L.frame_lock, notCheckable = false, checked = function() return C.frame.locked end, func = function()
+			C.frame.locked = not C.frame.locked
+			CTM:UpdateFrame()
+		end},
+		{text = L.frame_test, notCheckable = false, checked = function() return C.frame.test end, func = function()
+			C.frame.test = not C.frame.test
+			if C.frame.test then
+				TestMode()
+			else
+				CheckStatus()
+			end
+		end},
+		{text = L.version_check_all, notCheckable = true, func = function()
+			CheckVersion()
+		end},
+		{text = L.version_check, notCheckable = true, func = function()
+			CheckVersion(true)
+		end},
+		{text = L.gui_config, notCheckable = true, func = function()
+			LibStub("AceConfigDialog-3.0"):Open("ClassicThreatMeter")
+		end},
+	}
+end
+
+function CTM:SetupConfig()
 	LibStub("AceConfigRegistry-3.0"):RegisterOptionsTable(A.addonName, self.configTable)
 
 	local ACD = LibStub("AceConfigDialog-3.0")
@@ -580,6 +698,7 @@ function CTM:SetupOptions()
 	self.config.general = ACD:AddToBlizOptions(A.addonName, A.addonName, nil, "general")
 	self.config.appearance = ACD:AddToBlizOptions(A.addonName, L.appearance, A.addonName, "appearance")
 	-- self.config.warnings = ACD:AddToBlizOptions(A.addonName, L.warnings, A.addonName, "warnings")
+	self.config.version = ACD:AddToBlizOptions(A.addonName, L.version, A.addonName, "version")
 end
 
 CTM.configTable = {
@@ -734,14 +853,19 @@ CTM.configTable = {
 							order = 1,
 							name = L.frame_test,
 							type = "execute",
-							width = "normal",
-							func = function(info, value) TestMode() end,
+							func = function(info, value)
+								C.frame.test = not C.frame.test
+								if C.frame.test then
+									TestMode()
+								else
+									CheckStatus()
+								end
+							end,
 						},
 						locked = {
 							order = 2,
 							name = L.frame_lock,
 							type = "toggle",
-							width = "normal",
 						},
 						scale = {
 							order = 3,
@@ -751,7 +875,6 @@ CTM.configTable = {
 							max = 300,
 							step = 1,
 							bigStep = 10,
-							width = "normal",
 							get = function(info)
 								return C[info[2]][info[3]] * 100
 							end,
@@ -765,7 +888,6 @@ CTM.configTable = {
 							order = 4,
 							name = L.frame_headerShow,
 							type = "toggle",
-							width = "normal",
 						},
 						frameColors = {
 							order = 5,
@@ -814,7 +936,6 @@ CTM.configTable = {
 							min = 1,
 							max = 40,
 							step = 1,
-							width = "normal",
 							set = function(info, value)
 								local prev = C[info[2]][info[3]]
 								C[info[2]][info[3]] = value
@@ -834,7 +955,6 @@ CTM.configTable = {
 							min = 6,
 							max = 64,
 							step = 1,
-							width = "normal",
 						},
 						padding = {
 							order = 4,
@@ -843,9 +963,7 @@ CTM.configTable = {
 							min = 0,
 							max = 16,
 							step = 1,
-							width = "normal",
 						},
-						-- padding
 						-- marker
 						-- texture
 						-- custom color / class color
@@ -867,7 +985,6 @@ CTM.configTable = {
 							min = 6,
 							max = 64,
 							step = 1,
-							width = "normal",
 						},
 						style = {
 							order = 3,
@@ -879,7 +996,6 @@ CTM.configTable = {
 								["THICKOUTLINE"] = "THICKOUTLINE",
 							},
 							style = "dropdown",
-							width = "normal",
 						},
 						shadow = {
 							order = 4,
@@ -893,7 +1009,6 @@ CTM.configTable = {
 					order = 4,
 					name = L.reset,
 					type = "execute",
-					width = "normal",
 					func = function(info, value)
 						CTM_Options = {}
 						C = CopyDefaults(A.defaultConfig, CTM_Options)
@@ -929,7 +1044,6 @@ CTM.configTable = {
 					max = 100,
 					step = 1,
 					bigStep = 10,
-					width = "normal",
 					-- get / set
 				},
 				warningFile = {
@@ -947,6 +1061,42 @@ CTM.configTable = {
 			},
 		},
 		--]]
+		version = {
+			order = 4,
+			type = "group",
+			name = L.version,
+			args = {
+				version = {
+					order = 1,
+					name = L.version,
+					type = "header",
+				},
+				version_check = {
+					order = 2,
+					name = L.version_check,
+					type = "execute",
+					func = function(info, value)
+						CheckVersion()
+					end,
+				},
+				version_check_all = {
+					order = 3,
+					name = L.version_check_all,
+					type = "execute",
+					func = function(info, value)
+						CheckVersion(true)
+					end,
+				},
+				version_notify = {
+					order = 4,
+					name = L.version_notify,
+					type = "execute",
+					func = function(info, value)
+						NotifyOldClients()
+					end,
+				},
+			},
+		},
 	},
 }
 
