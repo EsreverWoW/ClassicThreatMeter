@@ -1,5 +1,5 @@
 local MAJOR_VERSION = "ThreatClassic-1.0"
-local MINOR_VERSION = 1
+local MINOR_VERSION = 2
 
 if MINOR_VERSION > _G.ThreatLib_MINOR_VERSION then _G.ThreatLib_MINOR_VERSION = MINOR_VERSION end
 
@@ -17,13 +17,15 @@ ThreatLib_funcs[#ThreatLib_funcs + 1] = function()
 
 	local Hunter = ThreatLib:GetOrCreateModule("Player")
 
+	local distractingShotFactor = 600 / 60
+
 	local threatTable = {
 		["DistractingShot"] = {
-			[20736] = 110,
-			[14274] = 160,
-			[15629] = 250,
-			[15630] = 350,
-			[15631] = 465,
+			[20736] = distractingShotFactor * 12,
+			[14274] = distractingShotFactor * 20,
+			[15629] = distractingShotFactor * 30,
+			[15630] = distractingShotFactor * 40,
+			[15631] = distractingShotFactor * 50,
 			[15632] = 600,
 		},
 		["Disengage"] = {

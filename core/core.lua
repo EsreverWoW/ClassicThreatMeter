@@ -34,6 +34,7 @@ local FACTION_BAR_COLORS	= _G.FACTION_BAR_COLORS
 local RAID_CLASS_COLORS		= _G.RAID_CLASS_COLORS
 
 -- other
+local loaded = false
 local bars = {}
 local threatData = {}
 local threatColors = {}
@@ -211,6 +212,7 @@ local function CheckVisibility()
 	local instanceType = select(2, GetInstanceInfo())
 	local show = (C.general.hideOOC and not InCombatLockdown()) or (C.general.hideSolo and GetNumGroupMembers() == 0) or (C.general.hideInPVP and (instanceType == "arena" or instanceType == "pvp"))
 
+	--[[
 	if A.classic then
 		if show then
 			ThreatLib:RequestActiveOnSolo(true)
@@ -218,6 +220,7 @@ local function CheckVisibility()
 			ThreatLib:RequestActiveOnSolo(false)
 		end
 	end
+	--]]
 
 	return show
 end
@@ -238,6 +241,7 @@ local function UpdateThreatData(unit)
 end
 
 local function CheckStatus()
+	if not loaded then return end
 	if C.frame.test then return end
 
 	local hideFrame = CheckVisibility()
@@ -250,8 +254,7 @@ local function CheckStatus()
 
 	local target = UnitIsFriend("player", "target") and "targettarget" or "target"
 
-	if UnitExists(target) and UnitAffectingCombat(target) then
-		CTM:Show()
+	if UnitExists(target) then -- and UnitAffectingCombat(target) then
 		local now = GetTime()
 		if now - oldTime > C.general.update then
 			-- wipe
@@ -290,6 +293,13 @@ local function CheckStatus()
 		end
 		oldTime = 0
 	end
+end
+
+if A.classic then
+	ThreatLib:RegisterCallback("Activate", CheckStatus)
+	ThreatLib:RegisterCallback("Deactivate", CheckStatus)
+	ThreatLib:RegisterCallback("ThreatUpdated", CheckStatus)
+	ThreatLib:RequestActiveOnSolo(true)
 end
 
 -----------------------------
@@ -647,15 +657,13 @@ function CTM:PLAYER_LOGIN()
 	self:RegisterEvent("PLAYER_REGEN_DISABLED")
 	self:RegisterEvent("PLAYER_REGEN_ENABLED")
 
-	if A.classic then
-		ThreatLib:RegisterCallback("Activate", CheckStatus)
-		ThreatLib:RegisterCallback("Deactivate", CheckStatus)
-		ThreatLib:RegisterCallback("ThreatUpdated", CheckStatus)
-	else
+	if not A.classic then
 		self:RegisterEvent("UNIT_THREAT_LIST_UPDATE")
 	end
 
 	self:SetupConfig()
+
+	loaded = true
 
 	self:UnregisterEvent("PLAYER_LOGIN")
 	self.PLAYER_LOGIN = nil

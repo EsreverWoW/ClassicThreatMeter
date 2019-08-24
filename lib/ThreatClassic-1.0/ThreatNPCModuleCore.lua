@@ -1,5 +1,5 @@
 local MAJOR_VERSION = "ThreatClassic-1.0"
-local MINOR_VERSION = 1
+local MINOR_VERSION = 2
 
 if MINOR_VERSION > _G.ThreatLib_MINOR_VERSION then
 	_G.ThreatLib_MINOR_VERSION = MINOR_VERSION
@@ -142,7 +142,21 @@ local function ModifyThreatOnTargetGUID(GUID, targetGUID, ...)
 	end
 end
 
-local halveThreat = function(mob, target) ModifyThreat(mob, target, 0.5, 0) end
+local onyThreat = function(mob, target)
+	local npcID = ThreatLib:NPCID(mob)
+	if npcID and npcID == 10184 then
+		ModifyThreat(mob, target, 0.75, 0) -- set Onyxia threat *0.75 on Knock Away
+	end
+end
+
+local halveThreat = function(mob, target)
+	-- hack to prevent Onyxia threat modifications since spellIDs were removed from CLEU
+	local npcID = ThreatLib:NPCID(mob)
+	if npcID and npcID == 10184 then return end
+
+	ModifyThreat(mob, target, 0.5, 0)
+end
+
 local threatHalveSpellIDs = {
 	-- Wing Buffet
 	-- We have assumed that all Wing Buffet effects reduce threat by half by default
@@ -178,8 +192,8 @@ local threatHalveSpellIDs = {
 
 local threeQuarterThreat = function(mob, target) ModifyThreat(mob, target, 0.75, 0) end
 local threatThreeQuarterSpellIDs = {
-	25778, -- Void Reaver, Fathom Lurker, Fathom Sporebat, Underbog Lord, Knock Away
-	19633, -- Onyxia, Knock Away
+	-- 25778, -- Void Reaver, Fathom Lurker, Fathom Sporebat, Underbog Lord, Knock Away
+	-- 19633, -- Onyxia, Knock Away
 	20566, -- Ragnaros, Wrath of Ragnaros
 	40486, -- Gurtogg Bloodboil, Eject (we ignore spellID 40597 which has a stun component rather than a knock back component)
 }
@@ -194,6 +208,9 @@ function ThreatLibNPCModuleCore:OnInitialize()
 	self.activeModule = nil
 	self.activeModuleID = nil
 	self.ModifyThreatSpells = {}
+
+	-- Necessary for WoW Classic
+	self.ModifyThreatSpells[19633] = onyThreat
 
 	for i = 1, #threatHalveSpellIDs do
 		self.ModifyThreatSpells[threatHalveSpellIDs[i]] = halveThreat

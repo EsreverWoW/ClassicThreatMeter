@@ -55,14 +55,14 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 -------------------------------------------------------------------------------]]
 
 local MAJOR_VERSION = "ThreatClassic-1.0"
-local MINOR_VERSION = 1
+local MINOR_VERSION = 2
 
 if MINOR_VERSION > _G.ThreatLib_MINOR_VERSION then _G.ThreatLib_MINOR_VERSION = MINOR_VERSION end
 
 ThreatLib_funcs[#ThreatLib_funcs + 1] = function()
 
 -- Need to update this when backwards incompatible changes are made
-local LAST_BACKWARDS_COMPATIBLE_REVISION = 1
+local LAST_BACKWARDS_COMPATIBLE_REVISION = 2
 
 local _G = _G
 local error = _G.error

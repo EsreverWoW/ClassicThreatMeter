@@ -1,5 +1,5 @@
 local MAJOR_VERSION = "ThreatClassic-1.0"
-local MINOR_VERSION = 1
+local MINOR_VERSION = 2
 
 if MINOR_VERSION > _G.ThreatLib_MINOR_VERSION then _G.ThreatLib_MINOR_VERSION = MINOR_VERSION end
 if select(2, _G.UnitClass("player")) ~= "WARRIOR" then return end
@@ -18,42 +18,58 @@ ThreatLib_funcs[#ThreatLib_funcs + 1] = function()
 
 	local Warrior = ThreatLib:GetOrCreateModule("Player")
 
+	-- https://github.com/magey/classic-warrior/wiki/Threat-Mechanics
+	-- maxRankThreatValue / maxRankLevelAvailability = factor
+	-- lowerRankThreatValue = factor * rankN
+
+	local sunderFactor 			= 261 / 58	-- ok-ish (between 260 - 270)
+	local shieldBashFactor 		= 187 / 52
+	local revengeFactor 		= 355 / 60	-- maybe look into r5
+	local heroicStrikeFactor 	= 220 / 70	-- NEED MORE INFO
+	local shieldSlamFactor 		= 250 / 60
+	local cleaveFactor 			= 100 / 60	-- NEED MORE INFO
+	local hamstringFactor 		= 145 / 54	-- ok-ish (between 142 - 148)
+	local mockingBlowFactor 	= 250 / 56	-- NEED MORE INFO
+	local battleShoutFactor 	= 1
+	local demoShoutFactor 		= 43 / 54
+	local thunderClapFactor		= 130 / 58
+
 	local threatValues = {
 		sunder = {
-			[7386] = 100, -- 47? https://github.com/magey/classic-warrior/wiki/Threat-Mechanics
-			[7405] = 140,
-			[8380] = 180,
-			[11596] = 220,
-			[11597] = 260
+			[7386] = sunderFactor * 10,
+			[7405] = sunderFactor * 22,
+			[8380] = sunderFactor * 34,
+			[11596] = sunderFactor * 46,
+			[11597] = 261
 		},
 		shieldBash = {
-			[72] = 180, -- 43? https://github.com/magey/classic-warrior/wiki/Threat-Mechanics
-			[1671] = 180,
-			[1672] = 180
+			[72] = shieldBashFactor * 12,
+			[1671] = shieldBashFactor * 32,
+			[1672] = 187
 		},
 		revenge = {
-			[6572] = 155, -- 83? https://github.com/magey/classic-warrior/wiki/Threat-Mechanics
-			[6574] = 195,
-			[7379] = 235,
-			[11600] = 275,
-			[11601] = 315,
+			[6572] = revengeFactor * 14,
+			[6574] = revengeFactor * 24,
+			[7379] = revengeFactor * 34,
+			[11600] = revengeFactor * 44,
+			[11601] = revengeFactor * 54, -- (315 - 319)
 			[25288] = 355
 		},
-		heroicStrike = {
+		heroicStrike = { -- needs work
 			[78] = 20,
-			[284] = 39, -- 31? https://github.com/magey/classic-warrior/wiki/Threat-Mechanics
+			[284] = 39,
 			[285] = 59,
 			[1608] = 78,
 			[11564] = 98,
 			[11565] = 118,
 			[11566] = 137,
 			[11567] = 145,
-			[25286] = 175 -- 173?
+			[25286] = 175
 		},
 		shieldSlam = {
-			[23922] = 160,
-			[23923] = 190,
-			[23924] = 220,
+			[23922] = shieldSlamFactor * 40,
+			[23923] = shieldSlamFactor * 48,
+			[23924] = shieldSlamFactor * 54,
 			[23925] = 250
 		},
 		cleave = {
@@ -64,9 +80,9 @@ ThreatLib_funcs[#ThreatLib_funcs + 1] = function()
 			[20569] = 100
 		},
 		hamstring = {
-			[1715] = 61, -- 22? https://github.com/magey/classic-warrior/wiki/Threat-Mechanics
-			[7372] = 101,
-			[7373] = 141,
+			[1715] = hamstringFactor * 8,
+			[7372] = hamstringFactor * 32,
+			[7373] = 145,
 		},
 		--[[
 		mockingBlow = {
@@ -74,32 +90,32 @@ ThreatLib_funcs[#ThreatLib_funcs + 1] = function()
 			[7400] = mockingBlowFactor * 26,
 			[7402] = mockingBlowFactor * 36,
 			[20559] = mockingBlowFactor * 46,
-			[20560] = mockingBlowFactor * 56
+			[20560] = 250
 		},
 		--]]
 		battleShout = {
-			[6673] = 5, -- 1? https://github.com/magey/classic-warrior/wiki/Threat-Mechanics
-			[5242] = 11, -- 12? https://github.com/magey/classic-warrior/wiki/Threat-Mechanics
-			[6192] = 17,
-			[11549] = 26,
-			[11550] = 39,
-			[11551] = 55,
-			[25289] = 70
+			[6673] = battleShoutFactor * 1,
+			[5242] = battleShoutFactor * 12,
+			[6192] = battleShoutFactor * 22,
+			[11549] = battleShoutFactor * 32,
+			[11550] = battleShoutFactor * 42,
+			[11551] = battleShoutFactor * 52,
+			[25289] = 60
 		},
 		demoShout = {
-			[1160] = 11, -- https://github.com/magey/classic-warrior/wiki/Threat-Mechanics
-			[6190] = 17,
-			[11554] = 21,
-			[11555] = 32,
+			[1160] = demoShoutFactor * 14,
+			[6190] = demoShoutFactor * 24,
+			[11554] = demoShoutFactor * 34,
+			[11555] = demoShoutFactor * 44,
 			[11556] = 43
 		},
 		thunderclap = {
-			[6343] = 17, -- 13? https://github.com/magey/classic-warrior/wiki/Threat-Mechanics
-			[8198] = 40,
-			[8204] = 64,
-			[8205] = 96,
-			[11580] = 143,
-			[11581] = 180
+			[6343] = thunderClapFactor * 6,
+			[8198] = thunderClapFactor * 18,
+			[8204] = thunderClapFactor * 28,
+			[8205] = thunderClapFactor * 38,
+			[11580] = thunderClapFactor * 48,
+			[11581] = 130
 		},
 		execute = {
 			[5308] = true,

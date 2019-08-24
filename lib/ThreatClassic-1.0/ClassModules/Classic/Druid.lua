@@ -1,5 +1,5 @@
 local MAJOR_VERSION = "ThreatClassic-1.0"
-local MINOR_VERSION = 1
+local MINOR_VERSION = 2
 
 if MINOR_VERSION > _G.ThreatLib_MINOR_VERSION then _G.ThreatLib_MINOR_VERSION = MINOR_VERSION end
 
@@ -17,6 +17,9 @@ ThreatLib_funcs[#ThreatLib_funcs + 1] = function()
 
 	local Druid = ThreatLib:GetOrCreateModule("Player")
 
+	local faerieFireFactor = 108 / 54	-- NEED MORE INFO
+	local maulFactor = 322 / 67			-- NEED MORE INFO
+
 	local threatValues = {
 		["cower"] = {
 			[8998] = 240,
@@ -31,11 +34,16 @@ ThreatLib_funcs[#ThreatLib_funcs + 1] = function()
 			[9898] = 39
 		},
 		["faerieFire"] = {
-			-- Rank 1, normal (not feral)
-			[770] = 108,
-			[778] = 108,
-			[9749] = 108,
-			[9907] = 108
+			-- normal
+			[770] = faerieFireFactor * 18,
+			[778] = faerieFireFactor * 30,
+			[9749] = faerieFireFactor * 42,
+			[9907] = 108,
+			-- feral
+			[16857] = faerieFireFactor * 18,
+			[17390] = faerieFireFactor * 30,
+			[17391] = faerieFireFactor * 42,
+			[17392] = 108,
 		},
 		["maul"] = {
 			[6807] = 18,
