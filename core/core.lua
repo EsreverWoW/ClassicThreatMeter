@@ -1023,7 +1023,6 @@ CTM.configTable = {
 						CTM:UpdateFrame()
 					end,
 				},
-				
 			},
 		},
 		--[[
