@@ -10,7 +10,10 @@ local unpack	= _G.unpack
 local tonumber	= _G.tonumber
 local type		= _G.type
 local floor		= _G.math.floor
+local byte		= _G.string.byte
 local format	= _G.string.format
+local len		= _G.string.len
+local sub		= _G.string.sub
 
 local ipairs	= _G.ipairs
 local pairs		= _G.pairs
@@ -161,6 +164,35 @@ local function NumFormat(v)
 	end
 end
 
+local function ShortenString(str, i, ellipsis)
+	if not str then return end
+	local bytes = len(str)
+	if bytes <= i then
+		return str
+	else
+		local length, pos = 0, 1
+		while (pos <= bytes) do
+			length = length + 1
+			local c = byte(str, pos)
+			if c > 0 and c <= 127 then
+				pos = pos + 1
+			elseif c >= 192 and c <= 223 then
+				pos = pos + 2
+			elseif c >= 224 and c <= 239 then
+				pos = pos + 3
+			elseif c >= 240 and c <= 247 then
+				pos = pos + 4
+			end
+			if length == i then break end
+		end
+		if length == i and pos <= bytes then
+			return sub(str, 1, pos - 1) .. (ellipsis and "..." or "")
+		else
+			return str
+		end
+	end
+end
+
 local colorUnit = {}
 local colorFallback = {}
 local colorMarker = {}
@@ -283,6 +315,7 @@ local function CheckStatus()
 		end
 		-- set header unit name
 		local targetName = UnitExists(target) and (": " .. UnitName(target)) or ""
+		targetName = ShortenString(targetName, floor(CTM.header:GetWidth() / (C.font.size * 0.75)), true)
 		CTM.headerText:SetText(format("%s%s", L.gui_threat, targetName))
 	else
 		-- clear header text of unit name
@@ -558,7 +591,6 @@ function CTM:PLAYER_ENTERING_WORLD(...)
 	playerGUID = UnitGUID("player")
 	-- CheckVersionOLD(self, ...)
 	CheckStatus()
-	self.PLAYER_ENTERING_WORLD = nil
 end
 
 function CTM:PLAYER_TARGET_CHANGED(...)
