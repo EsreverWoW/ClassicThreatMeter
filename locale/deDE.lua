@@ -5,7 +5,7 @@ if A.locale ~= "deDE" then return end
 --	deDE client
 -----------------------------
 -- main frame
-L.gui.threat		= "Bedrohung"
+L.gui_threat		= "Bedrohung"
 
 -- config frame
 L.default			= "Standard"

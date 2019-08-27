@@ -5,7 +5,7 @@ if A.locale ~= "ruRU" then return end
 --	ruRU client
 -----------------------------
 -- main frame
-L.gui.threat		= "Угроза"
+L.gui_threat		= "Угроза"
 
 -- config frame
 L.default			= "По умолчанию"

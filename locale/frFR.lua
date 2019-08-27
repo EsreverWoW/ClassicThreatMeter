@@ -5,7 +5,7 @@ if A.locale ~= "frFR" then return end
 --	frFR client
 -----------------------------
 -- main frame
-L.gui.threat		= "Menace"
+L.gui_threat		= "Menace"
 
 -- config frame
 L.default			= "Défaut"

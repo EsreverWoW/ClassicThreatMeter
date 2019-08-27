@@ -5,7 +5,7 @@ if A.locale ~= "zhTW" then return end
 --	zhTW client
 -----------------------------
 -- main frame
-L.gui.threat		= "威脅"
+L.gui_threat		= "威脅"
 
 -- config frame
 L.default			= "預設值"

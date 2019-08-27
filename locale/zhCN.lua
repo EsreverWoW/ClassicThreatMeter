@@ -5,7 +5,7 @@ if A.locale ~= "zhCN" then return end
 --	zhCN client
 -----------------------------
 -- main frame
-L.gui.threat		= "威胁"
+L.gui_threat		= "威胁"
 
 -- config frame
 L.default			= "默认"

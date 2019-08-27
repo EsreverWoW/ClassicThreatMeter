@@ -5,7 +5,7 @@ if A.locale ~= "koKR" then return end
 --	koKR client
 -----------------------------
 -- main frame
-L.gui.threat		= "위협"
+L.gui_threat		= "위협"
 
 -- config frame
 L.default			= "기본"

@@ -5,7 +5,7 @@ if A.locale ~= "itIT" then return end
 --	itIT client
 -----------------------------
 -- main frame
-L.gui.threat		= "Minaccia"
+L.gui_threat		= "Minaccia"
 
 -- config frame
 L.default			= "Predefinito"
