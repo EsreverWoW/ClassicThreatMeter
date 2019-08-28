@@ -37,7 +37,6 @@ local FACTION_BAR_COLORS	= _G.FACTION_BAR_COLORS
 local RAID_CLASS_COLORS		= _G.RAID_CLASS_COLORS
 
 -- other
-local loaded = false
 local bars = {}
 local threatData = {}
 local threatColors = {}
@@ -273,7 +272,6 @@ local function UpdateThreatData(unit)
 end
 
 local function CheckStatus()
-	if not loaded then return end
 	if C.frame.test then return end
 
 	local hideFrame = CheckVisibility()
@@ -315,7 +313,7 @@ local function CheckStatus()
 		end
 		-- set header unit name
 		local targetName = UnitExists(target) and (": " .. UnitName(target)) or ""
-		targetName = ShortenString(targetName, floor(CTM.header:GetWidth() / (C.font.size * 0.75)), true)
+		targetName = ShortenString(targetName, floor(CTM.header:GetWidth() / (C.font.size * 0.85)), true)
 		CTM.headerText:SetText(format("%s%s", L.gui_threat, targetName))
 	else
 		-- clear header text of unit name
@@ -328,13 +326,6 @@ local function CheckStatus()
 	end
 end
 
-if A.classic then
-	ThreatLib:RegisterCallback("Activate", CheckStatus)
-	ThreatLib:RegisterCallback("Deactivate", CheckStatus)
-	ThreatLib:RegisterCallback("ThreatUpdated", CheckStatus)
-	ThreatLib:RequestActiveOnSolo(true)
-end
-
 -----------------------------
 -- UPDATE FRAME
 -----------------------------
@@ -344,10 +335,12 @@ local function SetPosition(f)
 end
 
 local function OnDragStart(f)
+	if f:GetParent() == CTM then f = f:GetParent() end
 	f:StartMoving()
 end
 
 local function OnDragStop(f)
+	if f:GetParent() == CTM then f = f:GetParent() end
 	f:StopMovingOrSizing()
 	SetPosition(f)
 end
@@ -371,9 +364,18 @@ function CTM:UpdateFrame()
 		self:RegisterForDrag("LeftButton")
 		self:SetScript("OnDragStart", OnDragStart)
 		self:SetScript("OnDragStop", OnDragStop)
+
+		self.header:EnableMouse(true)
+		self.header:SetMovable(true)
+		self.header:SetClampedToScreen(true)
+		self.header:RegisterForDrag("LeftButton")
+		self.header:SetScript("OnDragStart", OnDragStart)
+		self.header:SetScript("OnDragStop", OnDragStop)
 	else
 		self:EnableMouse(false)
 		self:SetMovable(false)
+		self.header:EnableMouse(false)
+		self.header:SetMovable(false)
 	end
 
 	-- Background
@@ -583,7 +585,7 @@ end
 -----------------------------
 CTM:RegisterEvent("PLAYER_LOGIN")
 CTM:SetScript("OnEvent", function(self, event, ...)
-	return self[event](self, event, ...)
+	return self[event] and self[event](self, event, ...)
 end)
 
 function CTM:PLAYER_ENTERING_WORLD(...)
@@ -591,6 +593,7 @@ function CTM:PLAYER_ENTERING_WORLD(...)
 	playerGUID = UnitGUID("player")
 	-- CheckVersionOLD(self, ...)
 	CheckStatus()
+	-- self.PLAYER_ENTERING_WORLD = nil
 end
 
 function CTM:PLAYER_TARGET_CHANGED(...)
@@ -605,12 +608,14 @@ end
 
 function CTM:PLAYER_REGEN_DISABLED(...)
 	C.frame.test = false
+	ThreatLib.RegisterCallback(self, "ThreatUpdated", CheckStatus)
 	CheckStatus()
 end
 
 function CTM:PLAYER_REGEN_ENABLED(...)
 	collectgarbage()
 	C.frame.test = false
+	ThreatLib.UnregisterCallback(self, "ThreatUpdated", CheckStatus)
 	CheckStatus()
 end
 
@@ -620,7 +625,7 @@ function CTM:UNIT_THREAT_LIST_UPDATE(...)
 end
 
 function CTM:PLAYER_LOGIN()
-	C_ChatInfo.RegisterAddonMessagePrefix("CTMVer")
+	-- C_ChatInfo.RegisterAddonMessagePrefix("CTMVer")
 
 	CTM_Options = CTM_Options or {}
 	C = CopyDefaults(A.defaultConfig, CTM_Options)
@@ -689,13 +694,16 @@ function CTM:PLAYER_LOGIN()
 	self:RegisterEvent("PLAYER_REGEN_DISABLED")
 	self:RegisterEvent("PLAYER_REGEN_ENABLED")
 
-	if not A.classic then
+	if A.classic then
+		ThreatLib.RegisterCallback(self, "Activate", CheckStatus)
+		ThreatLib.RegisterCallback(self, "Deactivate", CheckStatus)
+		ThreatLib.RegisterCallback(self, "ThreatUpdated", CheckStatus)
+		ThreatLib:RequestActiveOnSolo(true)
+	else
 		self:RegisterEvent("UNIT_THREAT_LIST_UPDATE")
 	end
 
 	self:SetupConfig()
-
-	loaded = true
 
 	self:UnregisterEvent("PLAYER_LOGIN")
 	self.PLAYER_LOGIN = nil
