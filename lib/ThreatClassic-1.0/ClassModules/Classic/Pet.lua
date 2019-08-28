@@ -109,7 +109,7 @@ ThreatLib_funcs[#ThreatLib_funcs + 1] = function()
 
 	function Pet:ScanPetSkillRanks()
 		for i = 1,10 do
-			local name, rank = GetPetActionInfo(i)
+			local name, _, _, _, _ , _, rank = GetPetActionInfo(i)
 			if skillData[name] then
 				self.skillRanks[name] = rank
 			end
