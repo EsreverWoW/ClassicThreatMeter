@@ -10,10 +10,10 @@ local unpack	= _G.unpack
 local tonumber	= _G.tonumber
 local type		= _G.type
 local floor		= _G.math.floor
-local byte		= _G.string.byte
+local strbyte	= _G.string.byte
 local format	= _G.string.format
-local len		= _G.string.len
-local sub		= _G.string.sub
+local strlen	= _G.string.len
+local strsub	= _G.string.sub
 
 local ipairs	= _G.ipairs
 local pairs		= _G.pairs
@@ -165,14 +165,14 @@ end
 
 local function ShortenString(str, i, ellipsis)
 	if not str then return end
-	local bytes = len(str)
+	local bytes = strlen(str)
 	if bytes <= i then
 		return str
 	else
 		local length, pos = 0, 1
 		while (pos <= bytes) do
 			length = length + 1
-			local c = byte(str, pos)
+			local c = strbyte(str, pos)
 			if c > 0 and c <= 127 then
 				pos = pos + 1
 			elseif c >= 192 and c <= 223 then
@@ -185,7 +185,7 @@ local function ShortenString(str, i, ellipsis)
 			if length == i then break end
 		end
 		if length == i and pos <= bytes then
-			return sub(str, 1, pos - 1) .. (ellipsis and "..." or "")
+			return strsub(str, 1, pos - 1) .. (ellipsis and "..." or "")
 		else
 			return str
 		end
@@ -286,8 +286,7 @@ local function CheckStatus()
 
 	if UnitExists(target) then -- and UnitAffectingCombat(target) then
 		local now = GetTime()
-		if now - oldTime > C.general.update then
-			-- wipe
+		-- wipe
 			wipe(threatData)
 			local numGroupMembers = GetNumGroupMembers()
 			local inRaid = IsInRaid()
@@ -310,7 +309,6 @@ local function CheckStatus()
 			end
 			UpdateThreatBars()
 			oldTime = now
-		end
 		-- set header unit name
 		local targetName = UnitExists(target) and (": " .. UnitName(target)) or ""
 		targetName = ShortenString(targetName, floor(CTM.header:GetWidth() / (C.font.size * 0.85)), true)
@@ -356,6 +354,7 @@ function CTM:UpdateFrame()
 	self:ClearAllPoints()
 	self:SetPoint(unpack(C.frame.position))
 	self:SetScale(C.frame.scale)
+	self:SetFrameStrata(strsub(C.frame.strata, 3))
 
 	if not C.frame.locked then
 		self:EnableMouse(true)
@@ -645,7 +644,6 @@ function CTM:PLAYER_LOGIN()
 	self:UpdateMenu()
 
 	-- Setup frame
-	self:SetFrameStrata("BACKGROUND")
 	self:SetFrameLevel(1)
 	self:ClearAllPoints()
 	self:SetPoint(unpack(C.frame.position))
@@ -915,8 +913,30 @@ CTM.configTable = {
 							name = L.frame_lock,
 							type = "toggle",
 						},
-						scale = {
+						strata = {
 							order = 3,
+							name = L.frame_strata,
+							type = "select",
+							values = {
+								["1-BACKGROUND"] = "BACKGROUND",
+								["2-LOW"] = "LOW",
+								["3-MEDIUM"] = "MEDIUM",
+								["4-HIGH"] = "HIGH",
+								["5-DIALOG"] = "DIALOG",
+								["6-FULLSCREEN"] = "FULLSCREEN",
+								["7-FULLSCREEN_DIALOG"] = "FULLSCREEN_DIALOG",
+								["8-TOOLTIP"] = "TOOLTIP",
+							},
+							style = "dropdown",
+						},
+						-- width here
+						headerShow = {
+							order = 4,
+							name = L.frame_headerShow,
+							type = "toggle",
+						},
+						scale = {
+							order = 5,
 							name = L.frame_scale,
 							type = "range",
 							min = 50,
@@ -931,14 +951,8 @@ CTM.configTable = {
 								CTM:UpdateFrame()
 							end,
 						},
-						-- width here
-						headerShow = {
-							order = 4,
-							name = L.frame_headerShow,
-							type = "toggle",
-						},
 						frameColors = {
-							order = 5,
+							order = 6,
 							name = L.color,
 							type = "group",
 							inline = true,

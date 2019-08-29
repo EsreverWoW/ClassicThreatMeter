@@ -32,6 +32,7 @@ A.defaultConfig.frame = {
 	scale				= 1,									-- global scale
 	width				= 217,									-- frame width
 	locked				= false,								-- toggle for movable
+	strata				= "3-MEDIUM",							-- frame strata
 	position			= {"LEFT", "UIParent", "LEFT", 50, 0},	-- frame position
 	color				= {0, 0, 0, 0.35},						-- frame background color
 	headerShow			= true,									-- show frame header
