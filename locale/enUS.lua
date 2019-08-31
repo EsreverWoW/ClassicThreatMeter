@@ -13,8 +13,8 @@ L.reset					= "Reset to Defaults"
 -- messages
 L.message_welcome		= "Type /ctm for options."
 L.message_leader		= "You must be the group leader or have assist to do this."
-L.message_outdated		= "New version of CTM available! Please download the latest version."
-L.message_incompatible	= "CTM is out of date and will not be compatible for this group. Please upgrade immediately."
+L.message_outdated		= "New version of CTM/ThreatClassic-1.0 available! Please download the latest version."
+L.message_incompatible	= "CTM/ThreatClassic-1.0 is out of date and will not be compatible for this group. Please upgrade immediately."
 
 -- version check
 L.version				= "Version Check"
