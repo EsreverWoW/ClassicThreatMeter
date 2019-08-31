@@ -222,6 +222,7 @@ local function UpdateThreatBars()
 		local data = threatData[i]
 		local bar = CTM.bars[i]
 		if data and data.threatValue > 0 then
+			if bar == CTM.bars[1] then data.scaledPercent = 100 end -- temporary?
 			bar.name:SetText(UnitName(data.unit) or UNKNOWN)
 			bar.val:SetText(NumFormat(data.threatValue))
 			bar.perc:SetText(floor(data.scaledPercent).."%")
