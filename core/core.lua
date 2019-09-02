@@ -496,7 +496,7 @@ local function UpdateNameplateThreat(self)
 				status = 3
 			end
 		end
-		self.healthBar:SetStatusBarColor(unpack(threatColors[status]))
+		self.healthBar:SetStatusBarColor(unpack(CTM.threatColors[status]))
 	end
 end
 
