@@ -1,5 +1,5 @@
-local A, C, L, _ = unpack(select(2, ...))
-if A.locale ~= "zhTW" then return end
+local CTM, C, L, _ = unpack(select(2, ...))
+if CTM.locale ~= "zhTW" then return end
 
 -----------------------------
 --	zhTW client

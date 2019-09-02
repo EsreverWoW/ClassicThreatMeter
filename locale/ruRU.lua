@@ -1,5 +1,5 @@
-local A, C, L, _ = unpack(select(2, ...))
-if A.locale ~= "ruRU" then return end
+local CTM, C, L, _ = unpack(select(2, ...))
+if CTM.locale ~= "ruRU" then return end
 
 -----------------------------
 --	ruRU client

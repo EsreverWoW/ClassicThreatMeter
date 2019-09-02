@@ -1,4 +1,4 @@
-local A, C, L, _ = unpack(select(2, ...))
+local CTM, C, L, _ = unpack(select(2, ...))
 
 -----------------------------
 -- VARIABLES
@@ -22,9 +22,10 @@ local sort		= _G.table.sort
 local wipe		= _G.table.wipe
 
 local GetNumGroupMembers	= _G.GetNumGroupMembers
-local GetTime				= _G.GetTime
+local GetNumSubgroupMembers	= _G.GetNumSubgroupMembers
 local GetInstanceInfo		= _G.GetInstanceInfo
 local InCombatLockdown		= _G.InCombatLockdown
+local IsInRaid				= _G.IsInRaid
 local UnitAffectingCombat	= _G.UnitAffectingCombat
 local UnitClass				= _G.UnitClass
 local UnitExists			= _G.UnitExists
@@ -37,33 +38,30 @@ local FACTION_BAR_COLORS	= _G.FACTION_BAR_COLORS
 local RAID_CLASS_COLORS		= _G.RAID_CLASS_COLORS
 
 -- other
-local bars = {}
-local threatData = {}
-local threatColors = {}
-local oldTime = 0
-local playerName = ""
-local playerGUID = ""
+CTM.bars = {}
+CTM.threatData = {}
+CTM.colorFallback = {}
+CTM.colorMarker = {}
+CTM.threatColors = {}
+CTM.numGroupMembers = 0
+CTM.playerName = ""
+CTM.playerTarget = ""
 
 -----------------------------
 -- WOW CLASSIC
 -----------------------------
--- A.classic = _G.WOW_PROJECT_ID ~= _G.WOW_PROJECT_CLASSIC -- for testing in retail
-A.classic = _G.WOW_PROJECT_ID == _G.WOW_PROJECT_CLASSIC
+-- CTM.classic = _G.WOW_PROJECT_ID ~= _G.WOW_PROJECT_CLASSIC -- for testing in retail
+CTM.classic = _G.WOW_PROJECT_ID == _G.WOW_PROJECT_CLASSIC
 
-local ThreatLib = A.classic and LibStub:GetLibrary("ThreatClassic-1.0")
+local ThreatLib = CTM.classic and LibStub:GetLibrary("ThreatClassic-1.0")
 
-local UnitThreatSituation = A.classic and function(unit, mob)
+local UnitThreatSituation = CTM.classic and function(unit, mob)
 	return ThreatLib:UnitThreatSituation(unit, mob)
 end or _G.UnitThreatSituation
 
-local UnitDetailedThreatSituation = A.classic and function(unit, mob)
+local UnitDetailedThreatSituation = CTM.classic and function(unit, mob)
 	return ThreatLib:UnitDetailedThreatSituation(unit, mob)
 end or _G.UnitDetailedThreatSituation
-
------------------------------
--- INIT
------------------------------
-local CTM = CreateFrame("Frame", A.addonName.."BarFrame", UIParent)
 
 -----------------------------
 -- FUNCTIONS
@@ -83,13 +81,12 @@ local function CopyDefaults(t1, t2)
 	return t2
 end
 
-local backdrop = {}
 local function CreateBackdrop(parent, cfg)
 	local f = CreateFrame("Frame", nil, parent)
 	f:SetPoint("TOPLEFT", parent, "TOPLEFT", -cfg.inset, cfg.inset)
 	f:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", cfg.inset, -cfg.inset)
 	-- Backdrop Settings
-	backdrop = {
+	local backdrop = {
 		bgFile = cfg.bgFile,
 		edgeFile = cfg.edgeFile,
 		tile = cfg.tile,
@@ -147,23 +144,23 @@ end
 
 local function NumFormat(v)
 	if v > 1e10 then
-		return (floor(v / 1e9)).."b"
+		return (floor(v / 1e9)) .. "b"
 	elseif v > 1e9 then
-		return (floor((v / 1e9) * 10) / 10).."b"
+		return (floor((v / 1e9) * 10) / 10) .. "b"
 	elseif v > 1e7 then
-		return (floor(v / 1e6)).."m"
+		return (floor(v / 1e6)) .. "m"
 	elseif v > 1e6 then
-		return (floor((v / 1e6) * 10) / 10).."m"
+		return (floor((v / 1e6) * 10) / 10) .. "m"
 	elseif v > 1e4 then
-		return (floor(v / 1e3)).."k"
+		return (floor(v / 1e3)) .. "k"
 	elseif v > 1e3 then
-		return (floor((v / 1e3) * 10) / 10).."k"
+		return (floor((v / 1e3) * 10) / 10) .. "k"
 	else
 		return v
 	end
 end
 
-local function ShortenString(str, i, ellipsis)
+local function TruncateString(str, i, ellipsis)
 	if not str then return end
 	local bytes = strlen(str)
 	if bytes <= i then
@@ -192,14 +189,11 @@ local function ShortenString(str, i, ellipsis)
 	end
 end
 
-local colorUnit = {}
-local colorFallback = {}
-local colorMarker = {}
-
 local function GetColor(unit)
 	if unit then
-		if C.bar.marker and UnitGUID(unit) == playerGUID then
-			return colorMarker
+		local colorUnit = {}
+		if C.bar.marker and unit == "player" then
+			return CTM.colorMarker
 		elseif UnitIsPlayer(unit) then
 			colorUnit = RAID_CLASS_COLORS[select(2, UnitClass(unit))]
 		else
@@ -208,21 +202,21 @@ local function GetColor(unit)
 		colorUnit = {colorUnit.r, colorUnit.g, colorUnit.b, C.bar.alpha}
 		return colorUnit
 	else
-		return colorFallback
+		return CTM.colorFallback
 	end
 end
 
-local function UpdateThreatBars()
+function CTM:UpdateThreatBars()
 	-- sort the threat table
-	sort(threatData, Compare)
+	sort(self.threatData, Compare)
 
 	-- update view
 	for i = 1, C.bar.count do
 		-- get values out of table
-		local data = threatData[i]
-		local bar = CTM.bars[i]
+		local data = self.threatData[i]
+		local bar = self.bars[i]
 		if data and data.threatValue > 0 then
-			if bar == CTM.bars[1] then data.scaledPercent = 100 end -- temporary?
+			if bar == self.bars[1] then data.scaledPercent = 100 end -- temporary?
 			bar.name:SetText(UnitName(data.unit) or UNKNOWN)
 			bar.val:SetText(NumFormat(data.threatValue))
 			bar.perc:SetText(floor(data.scaledPercent).."%")
@@ -242,30 +236,22 @@ end
 
 local function CheckVisibility()
 	local instanceType = select(2, GetInstanceInfo())
-	local show = (C.general.hideOOC and not InCombatLockdown()) or (C.general.hideSolo and GetNumGroupMembers() == 0) or (C.general.hideInPVP and (instanceType == "arena" or instanceType == "pvp"))
+	local hide = (C.general.hideOOC and not InCombatLockdown()) or (C.general.hideSolo and CTM.numGroupMembers == 0) or (C.general.hideInPVP and (instanceType == "arena" or instanceType == "pvp"))
 
-	--[[
-	if A.classic then
-		if show then
-			ThreatLib:RequestActiveOnSolo(true)
-		else
-			ThreatLib:RequestActiveOnSolo(false)
-		end
+	if hide then
+		return CTM.frame:Hide()
+	else
+		return CTM.frame:Show()
 	end
-	--]]
-
-	return show
 end
 
 local function UpdateThreatData(unit)
 	if not UnitExists(unit) then return end
-	-- check target of target if currently targeting a friend
-	local target = UnitIsFriend("player", "target") and "targettarget" or "target"
-	local _, _, scaledPercent, _, threatValue = UnitDetailedThreatSituation(unit, target)
+	local _, _, scaledPercent, _, threatValue = UnitDetailedThreatSituation(unit, CTM.playerTarget)
 	if threatValue and threatValue < 0 then
 		threatValue = threatValue + 410065408
 	end
-	tinsert(threatData, {
+	tinsert(CTM.threatData, {
 		unit			= unit,
 		scaledPercent	= scaledPercent or 0,
 		threatValue		= threatValue or 0,
@@ -275,53 +261,42 @@ end
 local function CheckStatus()
 	if C.frame.test then return end
 
-	local hideFrame = CheckVisibility()
+	CheckVisibility()
 
-	if hideFrame then
-		return CTM:Hide()
-	else
-		CTM:Show()
-	end
-
-	local target = UnitIsFriend("player", "target") and "targettarget" or "target"
-
-	if UnitExists(target) then -- and UnitAffectingCombat(target) then
-		local now = GetTime()
+	if UnitExists(CTM.playerTarget) then -- and UnitAffectingCombat(CTM.playerTarget) then
 		-- wipe
-			wipe(threatData)
-			local numGroupMembers = GetNumGroupMembers()
-			local inRaid = IsInRaid()
-			-- group
-			if numGroupMembers > 0 then
-				local unit = inRaid and "raid" or "party"
-				for i = 1, inRaid and numGroupMembers or 4 do
-					UpdateThreatData(unit .. i)
-					UpdateThreatData(unit .. "pet" .. i)
-				end
-				-- party excludes player/pet
-				if not inRaid then
-					UpdateThreatData("player")
-					UpdateThreatData("pet")
-				end
-			-- solo
-			else
-				UpdateThreatData("player")
-				UpdateThreatData("pet")
+		wipe(CTM.threatData)
+
+		if IsInRaid() then
+			for i = 1, CTM.numGroupMembers do
+				UpdateThreatData(CTM.raidUnits[i])
+				UpdateThreatData(CTM.raidPetUnits[i])
 			end
-			UpdateThreatBars()
-			oldTime = now
+		else
+			if CTM.numGroupMembers > 0 then
+				for i = 1, CTM.numGroupMembers do
+					UpdateThreatData(CTM.partyUnits[i])
+					UpdateThreatData(CTM.partyPetUnits[i])
+				end
+			end
+			-- solo / party player & pet units
+			UpdateThreatData("player")
+			UpdateThreatData("pet")
+		end
+
+		CTM:UpdateThreatBars()
+
 		-- set header unit name
-		local targetName = UnitExists(target) and (": " .. UnitName(target)) or ""
-		targetName = ShortenString(targetName, floor(CTM.header:GetWidth() / (C.font.size * 0.85)), true)
-		CTM.headerText:SetText(format("%s%s", L.gui_threat, targetName))
+		local targetName = (": " .. UnitName(CTM.playerTarget)) or ""
+		targetName = TruncateString(targetName, floor(CTM.frame.header:GetWidth() / (C.font.size * 0.85)), true)
+		CTM.frame.header.text:SetText(format("%s%s", L.gui_threat, targetName))
 	else
 		-- clear header text of unit name
-		CTM.headerText:SetText(format("%s%s", L.gui_threat, ""))
+		CTM.frame.header.text:SetText(format("%s%s", L.gui_threat, ""))
 		-- hide bars when no target
-		for i = 1, C.bar.count do
-			bars[i]:Hide()
+		for i = 1, 40 do
+			CTM.bars[i]:Hide()
 		end
-		oldTime = 0
 	end
 end
 
@@ -334,14 +309,49 @@ local function SetPosition(f)
 end
 
 local function OnDragStart(f)
-	if f:GetParent() == CTM then f = f:GetParent() end
+	f = f:GetParent()
 	f:StartMoving()
 end
 
 local function OnDragStop(f)
-	if f:GetParent() == CTM then f = f:GetParent() end
+	f = f:GetParent()
 	f:StopMovingOrSizing()
 	SetPosition(f)
+end
+
+local function UpdateSize(f)
+	C.frame.width = f:GetWidth() - 2
+	C.frame.height = f:GetHeight()
+
+	local maxBarCount = floor(C.frame.height / (C.bar.height + C.bar.padding)) + 1
+	-- if C.bar.count > maxBarCount then C.bar.count = maxBarCount end
+	C.bar.count = maxBarCount
+
+	for i = 1, 40 do
+		if i <= C.bar.count and CTM.threatData[i] then
+			CTM.bars[i]:Show()
+		else
+			CTM.bars[i]:Hide()
+		end
+	end
+
+	CTM:UpdateFrame()
+end
+
+local function OnMouseDown(f)
+	f = f:GetParent()
+	f:SetMinResize(64, 64)
+	f:SetMaxResize(512, 1024)
+	CTM.sizing = true
+	f:SetScript("OnSizeChanged", UpdateSize)
+	f:StartSizing()
+end
+
+local function OnMouseUp(f)
+	f = f:GetParent()
+	CTM.sizing = false
+	f:SetScript("OnSizeChanged", nil)
+	f:StopMovingOrSizing()
 end
 
 local function UpdateFont(fs)
@@ -351,72 +361,82 @@ local function UpdateFont(fs)
 end
 
 function CTM:UpdateFrame()
-	self:SetSize(C.frame.width + 2, ((C.bar.height + C.bar.padding - 1) * C.bar.count) - C.bar.padding)
-	self:ClearAllPoints()
-	self:SetPoint(unpack(C.frame.position))
-	self:SetScale(C.frame.scale)
-	self:SetFrameStrata(strsub(C.frame.strata, 3))
+	local frame = self.frame
+
+	if not CTM.sizing then
+		frame:SetSize(C.frame.width + 2, C.frame.height)
+	end
+	frame:ClearAllPoints()
+	frame:SetPoint(unpack(C.frame.position))
+	frame:SetScale(C.frame.scale)
+	frame:SetFrameStrata(strsub(C.frame.strata, 3))
 
 	if not C.frame.locked then
-		self:EnableMouse(true)
-		self:SetMovable(true)
-		self:SetClampedToScreen(true)
-		self:RegisterForDrag("LeftButton")
-		self:SetScript("OnDragStart", OnDragStart)
-		self:SetScript("OnDragStop", OnDragStop)
+		frame:SetMovable(true)
+		frame:SetResizable(true)
+		frame:SetClampedToScreen(true)
 
-		self.header:EnableMouse(true)
-		self.header:SetMovable(true)
-		self.header:SetClampedToScreen(true)
-		self.header:RegisterForDrag("LeftButton")
-		self.header:SetScript("OnDragStart", OnDragStart)
-		self.header:SetScript("OnDragStop", OnDragStop)
+		frame.resize:Show()
+		frame.resize:EnableMouse(true)
+		frame.resize:SetMovable(true)
+		frame.resize:RegisterForDrag("LeftButton")
+		frame.resize:SetScript("OnDragStart", OnMouseDown)
+		frame.resize:SetScript("OnDragStop", OnMouseUp)
+
+		frame.header:SetMovable(true)
+		frame.header:SetClampedToScreen(true)
+		frame.header:RegisterForDrag("LeftButton")
+		frame.header:SetScript("OnDragStart", OnDragStart)
+		frame.header:SetScript("OnDragStop", OnDragStop)
 	else
-		self:EnableMouse(false)
-		self:SetMovable(false)
-		self.header:EnableMouse(false)
-		self.header:SetMovable(false)
+		frame:SetMovable(false)
+		frame:SetResizable(false)
+		frame.resize:Hide()
+		frame.resize:SetMovable(false)
+		frame.header:SetMovable(false)
 	end
 
 	-- Background
-	self.bg:SetAllPoints()
-	self.bg:SetVertexColor(unpack(C.frame.color))
+	frame.bg:SetAllPoints()
+	frame.bg:SetVertexColor(unpack(C.frame.color))
 
 	-- Header
 	if C.frame.headerShow then
-		self.header:SetSize(C.frame.width + 4, C.bar.height)
-		self.header:SetStatusBarTexture(C.bar.texture)
+		frame.header:SetSize(C.frame.width + 2, C.bar.height)
+		frame.header:SetStatusBarTexture(C.bar.texture)
 
-		self.header:SetPoint("TOPLEFT", self, -1, C.bar.height - 1)
-		self.header:SetStatusBarColor(unpack(C.frame.headerColor))
+		frame.header:SetPoint("TOPLEFT", frame, 0, C.bar.height - 1)
+		frame.header:SetStatusBarColor(unpack(C.frame.headerColor))
 
-		self.header.backdrop:SetBackdropColor(0, 0, 0, 0) -- ugly, but okay for now
-		self.header.backdrop:SetBackdropBorderColor(0, 0, 0, C.frame.headerColor[4]) -- adjust alpha for border
+		frame.header.backdrop:SetBackdropColor(0, 0, 0, 0) -- ugly, but okay for now
+		frame.header.backdrop:SetBackdropBorderColor(0, 0, 0, C.frame.headerColor[4]) -- adjust alpha for border
 
-		self.headerText:SetText(format("%s%s", L.gui_threat, ""))
+		frame.header.text:SetText(format("%s%s", L.gui_threat, ""))
 
-		UpdateFont(self.headerText)
+		UpdateFont(frame.header.text)
 
-		self.header:Show()
+		frame.header:Show()
 	else
-		self.header:Hide()
+		frame.header:Hide()
 	end
 
-	-- Create StatusBars
-	-- for i = 1, C.bar.count do
+	self:UpdateBars()
+end
+
+function CTM:UpdateBars()
 	for i = 1, 40 do
-		if not bars[i] then
-			bars[i] = CreateStatusBar(self)
+		if not self.bars[i] then
+			self.bars[i] = CreateStatusBar(self.frame)
 		end
 
-		local bar = bars[i]
+		local bar = self.bars[i]
 
 		if i == 1 then
 			bar:SetPoint("TOP", 0, 0)
 		else
-			bar:SetPoint("TOP", bars[i - 1], "BOTTOM", 0, -C.bar.padding + 1)
+			bar:SetPoint("TOP", self.bars[i - 1], "BOTTOM", 0, -C.bar.padding + 1)
 		end
-		bar:SetSize(C.frame.width + 4, C.bar.height)
+		bar:SetSize(C.frame.width + 2, C.bar.height)
 		bar:SetStatusBarTexture(C.bar.texture)
 
 		-- BG
@@ -440,19 +460,20 @@ end
 -----------------------------
 -- TEST MODE
 -----------------------------
-local function TestMode()
+function CTM:TestMode()
 	if InCombatLockdown() then return end
 
 	C.frame.test = true
+	wipe(CTM.threatData)
 	for i = 1, C.bar.count do
-		threatData[i] = {
-			unit = playerName,
+		self.threatData[i] = {
+			unit = self.playerName,
 			scaledPercent = i / C.bar.count * 100,
 			threatValue = i * 1e4,
 		}
-		tinsert(bars, i)
+		tinsert(self.bars, i)
 	end
-	UpdateThreatBars()
+	self:UpdateThreatBars()
 end
 
 -----------------------------
@@ -479,7 +500,7 @@ local function UpdateNameplateThreat(self)
 	end
 end
 
-if A.classic then
+if CTM.classic then
 	-- since UNIT_THREAT_LIST_UPDATE isn't a thing in Classic, health color doesn't update nearly as frequently
 	-- we'll instead hook the range check since it is OnUpdate - gross, but it works for now
 	hooksecurefunc("CompactUnitFrame_UpdateInRange", UpdateNameplateThreat)
@@ -506,11 +527,9 @@ local function CheckVersion(onlyOutdated)
 	for k, v in pairs(group) do
 		group[k] = nil
 	end
-	local numGroupMembers = GetNumGroupMembers()
-	local inRaid = IsInRaid()
-	if numGroupMembers > 0 then
-		local unit = inRaid and "raid" or "party"
-		for i = 1, inRaid and numGroupMembers or 4 do
+	if CTM.numGroupMembers > 0 then
+		local unit = IsInRaid() and "raid" or "party"
+		for i = 1, CTM.numGroupMembers do
 			local name = UnitName(unit .. i)
 			if name then
 				group[name] = true
@@ -540,11 +559,9 @@ local function NotifyOldClients()
 	local latestRevision = ThreatLib.latestSeenRevision
 	local revisions = ThreatLib.partyMemberRevisions
 	local agents = ThreatLib.partyMemberAgents
-	local numGroupMembers = GetNumGroupMembers()
-	local inRaid = IsInRaid()
-	if numGroupMembers > 0 then
-		local unit = inRaid and "raid" or "party"
-		for i = 1, inRaid and numGroupMembers or 4 do
+	if CTM.numGroupMembers > 0 then
+		local unit = IsInRaid() and "raid" or "party"
+		for i = 1, CTM.numGroupMembers do
 			local name = UnitName(unit .. i)
 			if name then
 				if ThreatLib:IsCompatible(name) then
@@ -563,19 +580,19 @@ end
 local function CheckVersionOLD(self, event, prefix, msg, channel, sender)
 	if event == "CHAT_MSG_ADDON" then
 		if prefix ~= "CTMVer" or sender == playerName then return end
-		if tonumber(msg) ~= nil and tonumber(msg) > tonumber(A.version) then
+		if tonumber(msg) ~= nil and tonumber(msg) > tonumber(CTM.version) then
 			print("|cffff0000"..L.outdated.."|r")
-			self:UnregisterEvent("CHAT_MSG_ADDON")
+			self.frame:UnregisterEvent("CHAT_MSG_ADDON")
 		end
 	else
 		if IsInGroup(LE_PARTY_CATEGORY_INSTANCE) then
-			C_ChatInfo.SendAddonMessage("CTMVer", tonumber(A.version), "INSTANCE_CHAT")
+			C_ChatInfo.SendAddonMessage("CTMVer", tonumber(CTM.version), "INSTANCE_CHAT")
 		elseif IsInRaid(LE_PARTY_CATEGORY_HOME) then
-			C_ChatInfo.SendAddonMessage("CTMVer", tonumber(A.version), "RAID")
+			C_ChatInfo.SendAddonMessage("CTMVer", tonumber(CTM.version), "RAID")
 		elseif IsInGroup(LE_PARTY_CATEGORY_HOME) then
-			C_ChatInfo.SendAddonMessage("CTMVer", tonumber(A.version), "PARTY")
+			C_ChatInfo.SendAddonMessage("CTMVer", tonumber(CTM.version), "PARTY")
 		elseif IsInGuild() then
-			C_ChatInfo.SendAddonMessage("CTMVer", tonumber(A.version), "GUILD")
+			C_ChatInfo.SendAddonMessage("CTMVer", tonumber(CTM.version), "GUILD")
 		end
 	end
 end
@@ -584,25 +601,32 @@ end
 -----------------------------
 -- EVENTS
 -----------------------------
-CTM:RegisterEvent("PLAYER_LOGIN")
-CTM:SetScript("OnEvent", function(self, event, ...)
-	return self[event] and self[event](self, event, ...)
+CTM.frame = CreateFrame("Frame", CTM.addonName.."BarFrame", UIParent)
+
+CTM.frame:RegisterEvent("PLAYER_LOGIN")
+CTM.frame:SetScript("OnEvent", function(self, event, ...)
+	return CTM[event] and CTM[event](CTM, event, ...)
 end)
 
 function CTM:PLAYER_ENTERING_WORLD(...)
-	playerName = UnitName("player")
-	playerGUID = UnitGUID("player")
+	self.playerName = UnitName("player")
+
+	self.numGroupMembers = IsInRaid() and GetNumGroupMembers() or GetNumSubgroupMembers()
+
 	-- CheckVersionOLD(self, ...)
 	CheckStatus()
-	-- self.PLAYER_ENTERING_WORLD = nil
 end
 
 function CTM:PLAYER_TARGET_CHANGED(...)
+	self.playerTarget = UnitExists("target") and (UnitIsFriend("player", "target") and "targettarget" or "target")
+
 	C.frame.test = false
 	CheckStatus()
 end
 
 function CTM:GROUP_ROSTER_UPDATE(...)
+	self.numGroupMembers = IsInRaid() and GetNumGroupMembers() or GetNumSubgroupMembers()
+
 	-- CheckVersionOLD(self, ...)
 	CheckStatus()
 end
@@ -614,7 +638,7 @@ function CTM:PLAYER_REGEN_DISABLED(...)
 end
 
 function CTM:PLAYER_REGEN_ENABLED(...)
-	collectgarbage()
+	-- collectgarbage()
 	C.frame.test = false
 	ThreatLib.UnregisterCallback(self, "ThreatUpdated", CheckStatus)
 	CheckStatus()
@@ -629,51 +653,31 @@ function CTM:PLAYER_LOGIN()
 	-- C_ChatInfo.RegisterAddonMessagePrefix("CTMVer")
 
 	CTM_Options = CTM_Options or {}
-	C = CopyDefaults(A.defaultConfig, CTM_Options)
+	C = CopyDefaults(self.defaultConfig, CTM_Options)
 
 	-- Minimum of 1 Row
 	if not C.bar.count or C.bar.count < 1 then
 		C.bar.count = 1
 	end
 
+	-- Adjust C.bar.count if it exceed the frame height
+	local maxBarCount = floor(C.frame.height / (C.bar.height + C.bar.padding - 1))
+	if C.bar.count > maxBarCount then C.bar.count = maxBarCount end
+
 	-- Adjust fonts for CJK
-	if A.locale == "koKR" or A.locale == "zhCN" or A.locale == "zhTW" then
+	if self.locale == "koKR" or self.locale == "zhCN" or self.locale == "zhTW" then
 		C.font.family = _G.STANDARD_TEXT_FONT
 	end
 
-	-- Setup Menu
-	CTM.Menu = CreateFrame("Frame", A.addonName.."MenuFrame", UIParent, "UIDropDownMenuTemplate")
-	self:UpdateMenu()
-
-	-- Setup frame
-	self:SetFrameLevel(1)
-	self:ClearAllPoints()
-	self:SetPoint(unpack(C.frame.position))
-
-	self.bg = self:CreateTexture(nil, "BACKGROUND", nil, -8)
-	self.bg:SetColorTexture(1, 1, 1, 1)
-
-	self.header = CreateStatusBar(self, true)
-	self.header:SetScript("OnMouseUp", function(self, button)
-		if button == "RightButton" then
-			EasyMenu(CTM.menuTable, CTM.Menu, "cursor", 0, 0, "MENU")
-		end
-	end)
-
-	self.headerText = CreateFS(self.header)
-	self.headerText:SetPoint("LEFT", self.header, 4, -1)
-	self.headerText:SetJustifyH("LEFT")
-
-	self.bars = bars
-
-	self:UpdateFrame()
+	self:SetupUnits()
+	self:SetupFrame()
+	self:SetupMenu()
 
 	-- Get Colors
-	colorUnit = {}
-	colorFallback = {0.8, 0, 0.8, C.bar.alpha}
-	colorMarker = {0.8, 0, 0, C.bar.alpha}
+	CTM.colorFallback = {0.8, 0, 0.8, C.bar.alpha}
+	CTM.colorMarker = {0.8, 0, 0, C.bar.alpha}
 
-	threatColors = {
+	CTM.threatColors = {
 		[0] = C.general.threatColors.good,
 		[1] = C.general.threatColors.neutral,
 		[2] = C.general.threatColors.neutral,
@@ -684,35 +688,86 @@ function CTM:PLAYER_LOGIN()
 	C.frame.test = false
 
 	if C.general.welcome then
-		print("|c00FFAA00"..A.addonName.." v"..A.version.." - "..L.message_welcome.."|r")
+		print("|c00FFAA00"..self.addonName.." v"..self.version.." - "..L.message_welcome.."|r")
 	end
 
-	self:RegisterEvent("PLAYER_ENTERING_WORLD")
-	self:RegisterEvent("GROUP_ROSTER_UPDATE")
-	-- self:RegisterEvent("CHAT_MSG_ADDON")
-	self:RegisterEvent("PLAYER_TARGET_CHANGED")
-	self:RegisterEvent("PLAYER_REGEN_DISABLED")
-	self:RegisterEvent("PLAYER_REGEN_ENABLED")
+	self.frame:RegisterEvent("PLAYER_ENTERING_WORLD")
+	self.frame:RegisterEvent("GROUP_ROSTER_UPDATE")
+	-- self.frame:RegisterEvent("CHAT_MSG_ADDON")
+	self.frame:RegisterEvent("PLAYER_TARGET_CHANGED")
+	self.frame:RegisterEvent("PLAYER_REGEN_DISABLED")
+	self.frame:RegisterEvent("PLAYER_REGEN_ENABLED")
 
-	if A.classic then
+	if self.classic then
 		ThreatLib.RegisterCallback(self, "Activate", CheckStatus)
 		ThreatLib.RegisterCallback(self, "Deactivate", CheckStatus)
 		ThreatLib.RegisterCallback(self, "ThreatUpdated", CheckStatus)
 		ThreatLib:RequestActiveOnSolo(true)
 	else
-		self:RegisterEvent("UNIT_THREAT_LIST_UPDATE")
+		self.frame:RegisterEvent("UNIT_THREAT_LIST_UPDATE")
 	end
 
+	-- Setup Config
 	self:SetupConfig()
 
-	self:UnregisterEvent("PLAYER_LOGIN")
+	self.frame:UnregisterEvent("PLAYER_LOGIN")
 	self.PLAYER_LOGIN = nil
 end
 
 -----------------------------
--- CONFIG
+-- SETUP
 -----------------------------
-function CTM:UpdateMenu()
+function CTM:SetupUnits()
+	self.partyUnits = {}
+	self.partyPetUnits = {}
+	self.raidUnits = {}
+	self.raidPetUnits = {}
+	for i = 1, 4 do
+		self.partyUnits[i] = format("party%d", i)
+		self.partyPetUnits[i] = format("partypet%d", i)
+	end
+	for i = 1, 40 do
+		self.raidUnits[i] = format("raid%d", i)
+		self.raidPetUnits[i] = format("raidpet%d", i)
+	end
+end
+
+function CTM:SetupFrame()
+	self.frame:SetFrameLevel(1)
+	self.frame:ClearAllPoints()
+	self.frame:SetPoint(unpack(C.frame.position))
+
+	self.frame.bg = self.frame:CreateTexture(nil, "BACKGROUND", nil, -8)
+	self.frame.bg:SetColorTexture(1, 1, 1, 1)
+
+	self.frame.resize = CreateFrame("Frame", self.addonName.."Resize", self.frame)
+	self.frame.resize:SetPoint("BOTTOMRIGHT", self.frame, "BOTTOMRIGHT", 0, 0)
+	self.frame.resize:SetSize(12, 12)
+	self.frame.resizeTexture = self.frame.resize:CreateTexture()
+	self.frame.resizeTexture:SetTexture([[Interface\ChatFrame\UI-ChatIM-SizeGrabber-Up]])
+	self.frame.resizeTexture:SetDesaturated(true)
+	self.frame.resizeTexture:SetPoint("TOPLEFT", self.frame.resize)
+	self.frame.resizeTexture:SetPoint("BOTTOMRIGHT", self.frame.resize, "BOTTOMRIGHT", 0, 0)
+
+	-- Setup Header
+	self.frame.header = CreateStatusBar(self.frame, true)
+	self.frame.header:SetScript("OnMouseUp", function(self, button)
+		if button == "RightButton" then
+			EasyMenu(CTM.menuTable, CTM.menu, "cursor", 0, 0, "MENU")
+		end
+	end)
+	self.frame.header:EnableMouse(true)
+
+	self.frame.header.text = CreateFS(self.frame.header)
+	self.frame.header.text:SetPoint("LEFT", self.frame.header, 4, -1)
+	self.frame.header.text:SetJustifyH("LEFT")
+
+	self:UpdateFrame()
+end
+
+function CTM:SetupMenu()
+	self.menu = CreateFrame("Frame", self.addonName.."MenuFrame", UIParent, "UIDropDownMenuTemplate")
+
 	CTM.menuTable = {
 		{text = L.frame_lock, notCheckable = false, checked = function() return C.frame.locked end, func = function()
 			C.frame.locked = not C.frame.locked
@@ -721,7 +776,7 @@ function CTM:UpdateMenu()
 		{text = L.frame_test, notCheckable = false, checked = function() return C.frame.test end, func = function()
 			C.frame.test = not C.frame.test
 			if C.frame.test then
-				TestMode()
+				CTM:TestMode()
 			else
 				CheckStatus()
 			end
@@ -738,20 +793,23 @@ function CTM:UpdateMenu()
 	}
 end
 
+-----------------------------
+-- CONFIG
+-----------------------------
 function CTM:SetupConfig()
-	LibStub("AceConfigRegistry-3.0"):RegisterOptionsTable(A.addonName, self.configTable)
+	LibStub("AceConfigRegistry-3.0"):RegisterOptionsTable(CTM.addonName, self.configTable)
 
 	local ACD = LibStub("AceConfigDialog-3.0")
 	self.config = {}
-	self.config.general = ACD:AddToBlizOptions(A.addonName, A.addonName, nil, "general")
-	self.config.appearance = ACD:AddToBlizOptions(A.addonName, L.appearance, A.addonName, "appearance")
-	-- self.config.warnings = ACD:AddToBlizOptions(A.addonName, L.warnings, A.addonName, "warnings")
-	self.config.version = ACD:AddToBlizOptions(A.addonName, L.version, A.addonName, "version")
+	self.config.general = ACD:AddToBlizOptions(CTM.addonName, CTM.addonName, nil, "general")
+	self.config.appearance = ACD:AddToBlizOptions(CTM.addonName, L.appearance, CTM.addonName, "appearance")
+	-- self.config.warnings = ACD:AddToBlizOptions(CTM.addonName, L.warnings, CTM.addonName, "warnings")
+	self.config.version = ACD:AddToBlizOptions(CTM.addonName, L.version, CTM.addonName, "version")
 end
 
 CTM.configTable = {
 	type = "group",
-	name = A.addonName,
+	name = CTM.addonName,
 	get = function(info)
 		return C[info[1]][info[2]]
 	end,
@@ -888,6 +946,7 @@ CTM.configTable = {
 			end,
 			set = function(info, value)
 				C[info[2]][info[3]] = value
+				C.frame.height = ((C.bar.height + C.bar.padding - 1) * C.bar.count) - C.bar.padding
 				CTM:UpdateFrame()
 			end,
 			args = {
@@ -904,7 +963,7 @@ CTM.configTable = {
 							func = function(info, value)
 								C.frame.test = not C.frame.test
 								if C.frame.test then
-									TestMode()
+									CTM:TestMode()
 								else
 									CheckStatus()
 								end
@@ -1008,6 +1067,7 @@ CTM.configTable = {
 										CTM.bars[i]:Hide()
 									end
 								end
+								C.frame.height = ((C.bar.height + C.bar.padding - 1) * C.bar.count) - C.bar.padding
 								CTM:UpdateFrame()
 							end,
 						},
@@ -1075,7 +1135,7 @@ CTM.configTable = {
 					type = "execute",
 					func = function(info, value)
 						CTM_Options = {}
-						C = CopyDefaults(A.defaultConfig, CTM_Options)
+						C = CopyDefaults(CTM.defaultConfig, CTM_Options)
 						CTM:UpdateFrame()
 					end,
 				},

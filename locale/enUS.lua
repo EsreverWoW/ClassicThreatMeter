@@ -1,4 +1,4 @@
-local A, C, L, _ = unpack(select(2, ...))
+local CTM, C, L, _ = unpack(select(2, ...))
 
 -----------------------------
 --	enUS and enGB clients
