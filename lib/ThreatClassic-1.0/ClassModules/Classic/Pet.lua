@@ -1,5 +1,5 @@
 local MAJOR_VERSION = "ThreatClassic-1.0"
-local MINOR_VERSION = 3
+local MINOR_VERSION = 4
 
 if MINOR_VERSION > _G.ThreatLib_MINOR_VERSION then _G.ThreatLib_MINOR_VERSION = MINOR_VERSION end
 
@@ -26,29 +26,29 @@ ThreatLib_funcs[#ThreatLib_funcs + 1] = function()
 		-- Growl
 		[GetSpellInfo(2649)] = {
 			spellIDs		= {2649, 14916, 14917, 14918, 14919, 14920, 14921},
-			-- rankLevel	= {1, 10, 20, 30, 40, 50, 60},
+			rankLevel		= {1, 10, 20, 30, 40, 50, 60},
 			rankThreat		= {50, 65, 110, 170, 240, 320, 415},
-			-- apBaseBonus	= 1235.6,
-			-- apLevelMalus	= 28.14,
-			-- apFactor		= 5.7,
+			apBaseBonus		= 1235.6,
+			apLevelMalus	= 28.14,
+			apFactor		= 5.7,
 		},
 		-- Torment
 		[GetSpellInfo(3716)] = {
 			spellIDs		= {3716, 7809, 7810, 7811, 11774, 11775},
-			-- rankLevel	= {10, 20, 30, 40, 50, 60},
+			rankLevel		= {10, 20, 30, 40, 50, 60},
 			rankThreat		= {45, 75, 125, 215, 300, 395},
-			-- apBaseBonus	= 123,
-			-- apLevelMalus	= 0,
-			-- apFactor		= 0.385,
+			apBaseBonus		= 123,
+			apLevelMalus	= 0,
+			apFactor		= 0.385,
 		},
 		-- Suffering
 		[GetSpellInfo(17735)] = {
 			spellIDs		= {17735, 17750, 17751, 17752},
-			-- rankLevel	= {24, 36, 48, 60},
+			rankLevel		= {24, 36, 48, 60},
 			rankThreat		= {150, 300, 450, 600},
-			-- apBaseBonus	= 124,
-			-- apLevelMalus	= 0,
-			-- apFactor		= 0.547,
+			apBaseBonus		= 124,
+			apLevelMalus	= 0,
+			apFactor		= 0.547,
 		},
 
 		-- I think that Intimidation scales, but I don't have any scaling data on it
