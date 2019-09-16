@@ -18,6 +18,7 @@ local strsub	= _G.string.sub
 local ipairs	= _G.ipairs
 local pairs		= _G.pairs
 local tinsert	= _G.table.insert
+local tremove	= _G.table.remove
 local sort		= _G.table.sort
 local wipe		= _G.table.wipe
 
@@ -30,9 +31,9 @@ local UnitAffectingCombat	= _G.UnitAffectingCombat
 local UnitClass				= _G.UnitClass
 local UnitExists			= _G.UnitExists
 local UnitIsFriend			= _G.UnitIsFriend
+local UnitIsPlayer			= _G.UnitIsPlayer
 local UnitName				= _G.UnitName
 local UnitReaction			= _G.UnitReaction
-local UnitGUID				= _G.UnitGUID
 
 local FACTION_BAR_COLORS	= _G.FACTION_BAR_COLORS
 local RAID_CLASS_COLORS		= _G.RAID_CLASS_COLORS
@@ -524,7 +525,7 @@ local function CheckVersion(onlyOutdated)
 	local latestRevision = ThreatLib.latestSeenRevision
 	local revisions = ThreatLib.partyMemberRevisions
 	local agents = ThreatLib.partyMemberAgents
-	for k, v in pairs(group) do
+	for k, _ in pairs(group) do
 		group[k] = nil
 	end
 	if CTM.numGroupMembers > 0 then
