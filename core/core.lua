@@ -484,7 +484,6 @@ local function UpdateNameplateThreat(self)
 	local unit = self.unit
 	if not unit then return end
 	if not unit:match("nameplate%d?$") then return end
-	if UnitIsPlayer(unit) then return end -- prevent coloring player nameplates
 	if UnitIsPlayer(unit) or UnitIsFriend("player", unit) then return end -- prevent coloring player/friendly NPC nameplates
 	local nameplate = C_NamePlate.GetNamePlateForUnit(unit)
 	if not nameplate then return end
