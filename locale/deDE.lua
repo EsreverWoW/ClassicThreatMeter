@@ -6,6 +6,3 @@ if CTM.locale ~= "deDE" then return end
 -----------------------------
 -- main frame
 L.gui_threat		= "Bedrohung"
-
--- config frame
-L.default			= "Standard"

@@ -6,6 +6,3 @@ if CTM.locale ~= "ruRU" then return end
 -----------------------------
 -- main frame
 L.gui_threat		= "Угроза"
-
--- config frame
-L.default			= "По умолчанию"

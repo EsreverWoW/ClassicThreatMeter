@@ -6,6 +6,3 @@ if CTM.locale ~= "zhTW" then return end
 -----------------------------
 -- main frame
 L.gui_threat		= "威脅"
-
--- config frame
-L.default			= "預設值"

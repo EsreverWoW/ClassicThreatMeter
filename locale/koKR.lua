@@ -6,6 +6,3 @@ if CTM.locale ~= "koKR" then return end
 -----------------------------
 -- main frame
 L.gui_threat		= "위협"
-
--- config frame
-L.default			= "기본"

@@ -6,6 +6,3 @@ if CTM.locale ~= "ptBR" and CTM.locale ~= "ptPT" then return end
 -----------------------------
 -- main frame
 L.gui_threat		= "Ameaça"
-
--- config frame
-L.default			= "Padrão"

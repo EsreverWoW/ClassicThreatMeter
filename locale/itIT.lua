@@ -6,6 +6,3 @@ if CTM.locale ~= "itIT" then return end
 -----------------------------
 -- main frame
 L.gui_threat		= "Minaccia"
-
--- config frame
-L.default			= "Predefinito"

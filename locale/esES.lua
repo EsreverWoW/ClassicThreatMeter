@@ -6,6 +6,3 @@ if CTM.locale ~= "esES" and CTM.locale ~= "esMX" then return end
 -----------------------------
 -- main frame
 L.gui_threat		= "Amenaza"
-
--- config frame
-L.default			= "Predeterminado"

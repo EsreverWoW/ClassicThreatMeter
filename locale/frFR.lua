@@ -6,6 +6,3 @@ if CTM.locale ~= "frFR" then return end
 -----------------------------
 -- main frame
 L.gui_threat		= "Menace"
-
--- config frame
-L.default			= "Défaut"
