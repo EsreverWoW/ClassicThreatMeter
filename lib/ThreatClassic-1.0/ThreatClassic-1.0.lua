@@ -1,6 +1,6 @@
 --[[-----------------------------------------------------------------------------
 Name: ThreatClassic-1.0
-Revision: $Revision: 5 $
+Revision: $Revision: 6 $
 Author(s): Es (EsreverWoW)
 Website: https://github.com/EsreverWoW/LibThreatClassic
 Documentation: https://github.com/EsreverWoW/LibThreatClassic/wiki
@@ -54,7 +54,7 @@ License along with this library; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 -------------------------------------------------------------------------------]]
 
-local MAJOR, MINOR = "ThreatClassic-1.0", 5
+local MAJOR, MINOR = "ThreatClassic-1.0", 6
 assert(LibStub, MAJOR .. " requires LibStub")
 
 -- local ThreatLib = LibStub:NewLibrary(MAJOR, MINOR)
