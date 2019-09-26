@@ -2,7 +2,7 @@ local CTM, C, L, _ = unpack(select(2, ...))
 if CTM.locale ~= "zhCN" then return end
 
 -----------------------------
---	zhCN client
+--	zhCN client (by Qcat of 60Addons)
 -----------------------------
 -- main frame
 L.gui_threat			= "仇恨"
