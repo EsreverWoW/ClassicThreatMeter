@@ -1240,3 +1240,9 @@ SLASH_CLASSICTHREATMETER3 = "/classicthreatmeter"
 SlashCmdList["CLASSICTHREATMETER"] = function()
 	LibStub("AceConfigDialog-3.0"):Open("ClassicThreatMeter")
 end
+
+SLASH_CLASSICTHREATMETERTOGGLE1 = "/ctmtoggle"
+SlashCmdList["CLASSICTHREATMETERTOGGLE"] = function()
+	C["general"]["hide"] = not C.general.hide
+	CheckStatus()
+end
