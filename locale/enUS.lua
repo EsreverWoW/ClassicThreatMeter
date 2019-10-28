@@ -34,10 +34,11 @@ L.general_minimap		= "Toggle minimap icon."
 L.general_ignorePets	= "Ignore threat from player pets."
 
 L.visibility			= "Visibility"
+L.visibility_hide		= "Always hide frame."
 L.visibility_hideOOC	= "Hide frame when out of combat."
 L.visibility_hideSolo	= "Hide frame when not in a group."
 L.visibility_hideInPvP	= "Hide frame when in battlegrounds."
-L.visibility_hide		= "Always hide frame."
+L.visibility_hideNotInstance = "Hide frame when not in instance."
 
 L.nameplates			= "Nameplates"
 L.nameplates_enable		= "Enable threat coloring (only for Blizzard nameplates)."

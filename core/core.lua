@@ -237,7 +237,7 @@ end
 
 local function CheckVisibility()
 	local instanceType = select(2, GetInstanceInfo())
-	local hide = C.general.hide or (C.general.hideOOC and not InCombatLockdown()) or (C.general.hideSolo and CTM.numGroupMembers == 0) or (C.general.hideInPVP and (instanceType == "arena" or instanceType == "pvp"))
+	local hide = C.general.hide or (C.general.hideOOC and not InCombatLockdown()) or (C.general.hideSolo and CTM.numGroupMembers == 0) or (C.general.hideInPVP and (instanceType == "arena" or instanceType == "pvp")) or (C.general.hideNotInstance and not (instanceType == "party" or instanceType == "raid"))
 
 	if hide then
 		return CTM.frame:Hide()
@@ -859,6 +859,7 @@ CTM.configTable = {
 					type = "toggle",
 					width = "full",
 					set = function(info, value)
+						C["general"]["hide"] = false
 						C[info[1]][info[2]] = value
 						CheckStatus()
 					end,
@@ -869,6 +870,7 @@ CTM.configTable = {
 					type = "toggle",
 					width = "full",
 					set = function(info, value)
+						C["general"]["hide"] = false
 						C[info[1]][info[2]] = value
 						CheckStatus()
 					end,
@@ -879,39 +881,55 @@ CTM.configTable = {
 					type = "toggle",
 					width = "full",
 					set = function(info, value)
+						C["general"]["hide"] = false
+						C[info[1]][info[2]] = value
+						CheckStatus()
+					end,
+				},
+				hideNotInstance = {
+					order = 9,
+					name = L.visibility_hideNotInstance,
+					type = "toggle",
+					width = "full",
+					set = function(info, value)
+						C["general"]["hide"] = false
 						C[info[1]][info[2]] = value
 						CheckStatus()
 					end,
 				},
 				hide = {
-					order = 9,
+					order = 10,
 					name = L.visibility_hide,
 					type = "toggle",
 					width = "full",
 					set = function(info, value)
+						C["general"]["hideOOC"] = false
+						C["general"]["hideSolo"] = false
+						C["general"]["hideInPVP"] = false
+						C["general"]["hideNotInstance"] = false
 						C[info[1]][info[2]] = value
 						CheckStatus()
 					end,
 				},
 				nameplates = {
-					order = 10,
+					order = 11,
 					name = L.nameplates,
 					type = "header",
 				},
 				nameplateThreat = {
-					order = 11,
+					order = 12,
 					name = L.nameplates_enable,
 					type = "toggle",
 					width = "full",
 				},
 				invertColors = {
-					order = 12,
+					order = 13,
 					name = L.nameplates_invert,
 					type = "toggle",
 					width = "full",
 				},
 				threatColors = {
-					order = 13,
+					order = 14,
 					name = L.nameplates_colors,
 					type = "group",
 					inline = true,
