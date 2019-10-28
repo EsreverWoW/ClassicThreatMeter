@@ -2,7 +2,8 @@
 ClassicThreatMeter is a threat meter for WoW Classic that attempts to provide reasonably accurate estimates of your group's relative threat values against enemy NPCs by recording pertinent data from the combat log and making calculations from that data.
 
 This is a fork with some extra features:
- - Adds always hide option
+ - Adds "always hide" option
+ - Adds "hide when not in instance" option
  - Adds command `/ctmtoggle`
 
 
