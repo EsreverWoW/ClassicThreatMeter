@@ -1,5 +1,10 @@
-# ClassicThreatMeter [!["Open Issues"](https://img.shields.io/github/issues-raw/EsreverWoW/ClassicThreatMeter.svg)](https://github.com/EsreverWoW/ClassicThreatMeter/issues) 
+# ClassicThreatMeter (FORK) [!["Open Issues"](https://img.shields.io/github/issues-raw/EsreverWoW/ClassicThreatMeter.svg)](https://github.com/EsreverWoW/ClassicThreatMeter/issues) 
 ClassicThreatMeter is a threat meter for WoW Classic that attempts to provide reasonably accurate estimates of your group's relative threat values against enemy NPCs by recording pertinent data from the combat log and making calculations from that data.
+
+This is a fork with some extra features:
+ - Adds always hide option
+ - Adds command `/ctmtoggle`
+
 
 **Bugs:**
  - Please forgive any bugs that may arise. If you happen to notice any, please check the [issue tracker](https://github.com/EsreverWoW/ClassicThreatMeter/issues) and report them there if someone hasn't yet already. Thanks!
