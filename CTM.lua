@@ -658,7 +658,6 @@ function CTM:PLAYER_LOGIN()
 	
 	BINDING_HEADER_CTMHEADER = "ClassicThreatMeter";
 	BINDING_NAME_CTMNAME = "Hide frame (toggle)";
-	print("CTM loaded")
 
 	-- Minimum of 1 Row
 	if not C.bar.count or C.bar.count < 1 then
