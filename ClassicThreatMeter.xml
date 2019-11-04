@@ -1,6 +1,6 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/">
 	<!-- Init -->
-	<Script file="core\init.lua"/>
+	<Script file="init.lua"/>
 
 	<!-- Libraries -->
 	<Script file="lib\LibStub\LibStub.lua"/>
@@ -30,6 +30,6 @@
 	<Script file="locale\zhTW.lua"/>
 
 	<!-- Core -->
-	<Script file="core\config.lua"/>
-	<Script file="core\core.lua"/>
+	<Script file="config.lua"/>
+	<Script file="CTM.lua"/>
 </Ui>

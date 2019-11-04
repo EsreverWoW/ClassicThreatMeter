@@ -1,0 +1,5 @@
+<Bindings>
+  <Binding name="CTMNAME" header="CTMHEADER" category="ADDONS">
+    CTM_HotkeyPressed(keystate);
+  </Binding>
+</Bindings>

@@ -237,7 +237,7 @@ end
 
 local function CheckVisibility()
 	local instanceType = select(2, GetInstanceInfo())
-	local hide = (C.general.hideOOC and not InCombatLockdown()) or (C.general.hideSolo and CTM.numGroupMembers == 0) or (C.general.hideInPVP and (instanceType == "arena" or instanceType == "pvp"))
+	local hide = C.general.hide or (C.general.hideOOC and not InCombatLockdown()) or (C.general.hideSolo and CTM.numGroupMembers == 0) or (C.general.hideInPVP and (instanceType == "arena" or instanceType == "pvp")) or (C.general.hideNotInstance and not (instanceType == "party" or instanceType == "raid"))
 
 	if hide then
 		return CTM.frame:Hide()
@@ -655,6 +655,9 @@ function CTM:PLAYER_LOGIN()
 
 	CTM_Options = CTM_Options or {}
 	C = CopyDefaults(self.defaultConfig, CTM_Options)
+	
+	BINDING_HEADER_CTMHEADER = "ClassicThreatMeter";
+	BINDING_NAME_CTMNAME = "Hide frame (toggle)";
 
 	-- Minimum of 1 Row
 	if not C.bar.count or C.bar.count < 1 then
@@ -859,6 +862,7 @@ CTM.configTable = {
 					type = "toggle",
 					width = "full",
 					set = function(info, value)
+						C["general"]["hide"] = false
 						C[info[1]][info[2]] = value
 						CheckStatus()
 					end,
@@ -869,6 +873,7 @@ CTM.configTable = {
 					type = "toggle",
 					width = "full",
 					set = function(info, value)
+						C["general"]["hide"] = false
 						C[info[1]][info[2]] = value
 						CheckStatus()
 					end,
@@ -879,29 +884,55 @@ CTM.configTable = {
 					type = "toggle",
 					width = "full",
 					set = function(info, value)
+						C["general"]["hide"] = false
+						C[info[1]][info[2]] = value
+						CheckStatus()
+					end,
+				},
+				hideNotInstance = {
+					order = 9,
+					name = L.visibility_hideNotInstance,
+					type = "toggle",
+					width = "full",
+					set = function(info, value)
+						C["general"]["hide"] = false
+						C[info[1]][info[2]] = value
+						CheckStatus()
+					end,
+				},
+				hide = {
+					order = 10,
+					name = L.visibility_hide,
+					type = "toggle",
+					width = "full",
+					set = function(info, value)
+						C["general"]["hideOOC"] = false
+						C["general"]["hideSolo"] = false
+						C["general"]["hideInPVP"] = false
+						C["general"]["hideNotInstance"] = false
 						C[info[1]][info[2]] = value
 						CheckStatus()
 					end,
 				},
 				nameplates = {
-					order = 9,
+					order = 11,
 					name = L.nameplates,
 					type = "header",
 				},
 				nameplateThreat = {
-					order = 10,
+					order = 12,
 					name = L.nameplates_enable,
 					type = "toggle",
 					width = "full",
 				},
 				invertColors = {
-					order = 11,
+					order = 13,
 					name = L.nameplates_invert,
 					type = "toggle",
 					width = "full",
 				},
 				threatColors = {
-					order = 12,
+					order = 14,
 					name = L.nameplates_colors,
 					type = "group",
 					inline = true,
@@ -1224,9 +1255,21 @@ CTM.configTable = {
 	},
 }
 
+function CTM_HotkeyPressed(keystate)
+	-- keystate could be used here if needed
+	C["general"]["hide"] = not C.general.hide
+	CheckStatus()
+end
+
 SLASH_CLASSICTHREATMETER1 = "/ctm"
 SLASH_CLASSICTHREATMETER2 = "/threat"
 SLASH_CLASSICTHREATMETER3 = "/classicthreatmeter"
 SlashCmdList["CLASSICTHREATMETER"] = function()
 	LibStub("AceConfigDialog-3.0"):Open("ClassicThreatMeter")
+end
+
+SLASH_CLASSICTHREATMETERTOGGLE1 = "/ctmtoggle"
+SlashCmdList["CLASSICTHREATMETERTOGGLE"] = function()
+	C["general"]["hide"] = not C.general.hide
+	CheckStatus()
 end
