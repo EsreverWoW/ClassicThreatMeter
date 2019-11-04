@@ -54,6 +54,8 @@ License along with this library; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 -------------------------------------------------------------------------------]]
 
+-- Don't load if not WoW Classic
+if _G.WOW_PROJECT_ID ~= _G.WOW_PROJECT_CLASSIC then return end
 
 local MAJOR, MINOR = "ThreatClassic-1.0", 10
 assert(LibStub, MAJOR .. " requires LibStub")
@@ -389,6 +391,7 @@ function ThreatLib:SerializeThreatTable(pgid, t)
 end
 
 function ThreatLib:NPCID(guid)
+	if not guid or type(guid) ~= "string" then return end
 	local unitType, _, _, _, _, npcID = strsplit("-", guid)
 	if unitType ~= "Player" then
 		return tonumber(npcID)

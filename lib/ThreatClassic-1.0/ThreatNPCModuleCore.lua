@@ -454,7 +454,7 @@ function ThreatLibNPCModuleCore.modulePrototype:COMBAT_LOG_EVENT_UNFILTERED(even
 
 	if subEvent == "UNIT_DIED" then
 		if bit_band(destFlags, COMBATLOG_OBJECT_TYPE_NPC) == COMBATLOG_OBJECT_TYPE_NPC then
-			local npc_id = ThreatLib:NPCID(dstGUID)
+			local npc_id = ThreatLib:NPCID(destGUID)
 			local func = self.encounterEnemies[npc_id]
 			if func then
 				func(self, npc_id, destGUID, destName, sourceName, sourceGUID)
