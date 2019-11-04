@@ -655,6 +655,10 @@ function CTM:PLAYER_LOGIN()
 
 	CTM_Options = CTM_Options or {}
 	C = CopyDefaults(self.defaultConfig, CTM_Options)
+	
+	BINDING_HEADER_CTMHEADER = "ClassicThreatMeter";
+	BINDING_NAME_CTMNAME = "Hide frame (toggle)";
+	print("CTM loaded")
 
 	-- Minimum of 1 Row
 	if not C.bar.count or C.bar.count < 1 then
@@ -1251,6 +1255,12 @@ CTM.configTable = {
 		},
 	},
 }
+
+function CTM_HotkeyPressed(keystate)
+	-- keystate could be used here if needed
+	C["general"]["hide"] = not C.general.hide
+	CheckStatus()
+end
 
 SLASH_CLASSICTHREATMETER1 = "/ctm"
 SLASH_CLASSICTHREATMETER2 = "/threat"
